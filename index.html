@@ -1,0 +1,2731 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1日栄養素管理アプリ - 完全栄養食トラッカー</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.1/css/all.min.css">
+    <style>
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            width: 100%;
+            max-height: 400px;
+        }
+        .nutrition-detail {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .selected-items {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 35vh;
+            }
+        }
+        /* ツールチップのスタイル */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* アニメーション効果 */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* タブのスタイル */
+        .tab-active {
+            background-color: #4299e1;
+            color: white;
+        }
+        .tab-inactive {
+            background-color: #e2e8f0;
+            color: #4a5568;
+        }
+        /* 範囲バーのスタイル */
+        .range-area {
+            position: relative;
+            height: 20px;
+            background-color: #f3f4f6;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .range-target {
+            position: absolute;
+            height: 100%;
+            background-color: rgba(96, 165, 250, 0.3);
+            border-radius: 10px;
+        }
+        .range-current {
+            position: absolute;
+            width: 4px;
+            height: 20px;
+            background-color: #2563eb;
+            border-radius: 2px;
+        }
+        .range-label {
+            position: absolute;
+            font-size: 0.7rem;
+            color: #6b7280;
+        }
+        /* 検索バーのスタイル */
+        .search-container {
+            position: relative;
+            margin-bottom: 10px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 8px 30px 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .search-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+        }
+        .search-results {
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            z-index: 10;
+            display: none;
+        }
+        .search-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .search-item:hover {
+            background-color: #f3f4f6;
+        }
+        /* 基準値テーブルの複数列表示 */
+        #standards-table-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* 2列または3列になるように調整 */
+            gap: 1rem; /* グリッドアイテム間の間隔 */
+            padding-top: 0.5rem;
+        }
+
+        #standards-table-body tr {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            background-color: #f9fafb; /* 薄い背景色 */
+        }
+
+        #standards-table-body tr:nth-child(odd) {
+            background-color: #f9fafb; /* 奇数行の背景色 */
+        }
+
+        #standards-table-body tr:nth-child(even) {
+            background-color: #ffffff; /* 偶数行の背景色 */
+        }
+
+        #standards-table-body td {
+            padding: 0.25rem 0.5rem;
+            border: none; /* 個別のtdのボーダーを削除 */
+            display: flex;
+            justify-content: space-between; /* 要素と値の間にスペース */
+            align-items: center;
+        }
+
+        #standards-table-body td:first-child {
+            font-weight: 600; /* 栄養素名を太字に */
+            color: #2d3748; /* 濃いめの色 */
+            border-bottom: 1px dashed #e2e8f0; /* 下線 */
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        #standards-table-body td:first-child span:first-child {
+            font-size: 0.9rem; /* 栄養素名のフォントサイズ */
+        }
+        #standards-table-body td:last-child {
+            font-size: 0.8rem; /* 単位のフォントサイズ */
+            color: #718096;
+        }
+
+        /* テーブルヘッダーを非表示にする (グリッド表示のため) */
+        #standards-display thead {
+            display: none;
+        }
+
+        /* スマホ横画面対応のための調整 */
+        @media (max-width: 768px) {
+            #standards-table-body {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* スマホでは2列程度 */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-2">
+    <div class="container mx-auto bg-white rounded-lg shadow-lg p-3 max-w-6xl">
+        <h1 class="text-xl md:text-2xl font-bold text-center mb-3">1日栄養素管理アプリ - 完全栄養食トラッカー</h1>
+        
+        <!-- タブナビゲーション -->
+        <div class="flex border-b border-gray-200 mb-4">
+            <button id="tab-nutrition" class="py-2 px-4 font-medium text-center tab-active rounded-t-lg">栄養管理</button>
+            <button id="tab-settings" class="py-2 px-4 font-medium text-center tab-inactive rounded-t-lg ml-1">基準値設定</button>
+        </div>
+        
+        <!-- 栄養管理タブ -->
+        <div id="nutrition-container">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <!-- メニュー選択エリア -->
+                <div class="bg-blue-50 p-3 rounded-lg shadow-sm">
+                    <h2 class="text-lg font-semibold mb-2 flex items-center">
+                        <i class="fas fa-utensils mr-2 text-blue-500"></i>メニュー選択
+                    </h2>
+                    
+                    <!-- 検索バーの追加 -->
+                    <div class="search-container mb-3">
+                        <input id="food-search" type="text" placeholder="メニューを検索..." class="search-input">
+                        <i class="fas fa-search search-icon"></i>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <select id="food-select" class="w-full p-2 border rounded focus:ring focus:ring-blue-300 focus:border-blue-500">
+                            <option value="" disabled selected>メニューを選択してください</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="add-food" class="bg-blue-500 hover:bg-blue-600 text-white py-1 px-4 rounded transition duration-200 flex items-center justify-center">
+                            <i class="fas fa-plus mr-1"></i>追加
+                        </button>
+                        <button id="reset-foods" class="bg-red-500 hover:bg-red-600 text-white py-1 px-4 rounded transition duration-200 flex items-center justify-center">
+                            <i class="fas fa-trash-alt mr-1"></i>リセット
+                        </button>
+                    </div>
+                    
+                    <h3 class="text-md font-semibold mt-4 mb-1 flex items-center">
+                        <i class="fas fa-list-check mr-2 text-blue-500"></i>選択したメニュー
+                    </h3>
+                    <div id="selected-foods" class="selected-items border rounded p-2 bg-white shadow-sm">
+                        <div class="text-gray-400 text-sm italic">メニューが選択されていません</div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="bg-yellow-100 p-2 rounded text-sm border border-yellow-200">
+                            <div class="font-semibold mb-1 text-yellow-800"><i class="fas fa-lightbulb mr-1"></i>使い方</div>
+                            <p>メニューを選択して「追加」ボタンを押すと、栄養素グラフが更新されます。複数のメニューを選択すると、栄養素が積み上がっていきます。</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 栄養グラフエリア -->
+                <div class="md:col-span-2 bg-gray-50 p-3 rounded-lg shadow-sm">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-lg font-semibold flex items-center">
+                            <i class="fas fa-chart-bar mr-2 text-green-500"></i>栄養素摂取グラフ
+                        </h2>
+                        <select id="nutrient-select" class="p-1 border rounded text-sm focus:ring focus:ring-green-300 focus:border-green-500">
+                            <option value="main">主要栄養素</option>
+                            <option value="minerals">ミネラル</option>
+                            <option value="vitamins">ビタミン</option>
+                        </select>
+                    </div>
+                    <div class="chart-container bg-white p-2 rounded shadow-sm">
+                        <canvas id="nutrition-chart"></canvas>
+                    </div>
+                    
+                    <div class="mt-2 text-xs text-right text-gray-500 flex items-center justify-end">
+                        <i class="fas fa-info-circle mr-1"></i>グラフをクリックすると栄養素の詳細が表示されます
+                    </div>
+                    
+                    <!-- 表示モード切替 -->
+                    <div class="mt-2 flex justify-end">
+                        <div class="inline-flex rounded-md shadow-sm" role="group">
+                            <button id="display-percent" type="button" class="px-3 py-1 text-xs font-medium text-white bg-blue-600 border border-blue-600 rounded-l-lg hover:bg-blue-700">
+                                ％表示
+                            </button>
+                            <button id="display-absolute" type="button" class="px-3 py-1 text-xs font-medium text-gray-900 bg-white border border-blue-600 rounded-r-lg hover:bg-gray-100">
+                                絶対値
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 合計カロリー表示 -->
+                    <div class="mt-3 p-2 bg-blue-100 rounded-lg text-center border border-blue-200">
+                        <span class="font-bold"><i class="fas fa-fire mr-1"></i>合計カロリー: </span>
+                        <span id="total-calories" class="text-xl font-bold">0</span>
+                        <span>kcal</span>
+                        <div id="calorie-percent" class="text-sm mt-1">(基準値の0%)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 選択メニュー詳細 -->
+            <div class="mt-3 bg-green-50 p-3 rounded-lg shadow-sm">
+                <h2 class="text-lg font-semibold mb-2 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-green-500"></i>栄養素詳細
+                </h2>
+                <div id="nutrition-details" class="nutrition-detail grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
+                    <div class="text-gray-400 italic">メニューを選択すると詳細が表示されます</div>
+                </div>
+            </div>
+            <!-- ここから下を追加してください -->
+             <div class="mt-4 flex justify-end">
+                <button id="submit-intake" class="bg-indigo-500 hover:bg-indigo-600 text-white py-1 px-4 rounded">
+                    今日の摂取を表示／送信
+                </button>
+            </div>
+            <div id="today-intake-display" class="mt-3 p-3 bg-white rounded shadow-sm hidden">
+                <h3 class="font-semibold mb-2">📤 今日の摂取データ</h3>
+                <pre id="today-intake-json" class="text-xs bg-gray-100 p-2 rounded overflow-x-auto"></pre>
+                <div class="mt-2 text-right">
+                    <button id="today-intake-cancel" class="text-sm text-red-500 hover:underline">キャンセル</button>
+                </div>
+            </div>
+            <!-- ここまでを追加 -->
+        </div>
+        
+        <!-- 基準値設定タブ -->
+        <div id="settings-container" class="hidden">
+            <h2 class="text-lg font-semibold mb-3">個人情報設定</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 基本情報 -->
+                <div class="p-3 bg-white rounded-lg shadow-sm">
+                    <h3 class="text-md font-semibold mb-2">基本情報</h3>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">性別</label>
+                        <select id="gender" class="w-full p-2 border rounded">
+                            <option value="male">男性</option>
+                            <option value="female">女性</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">年齢区分</label>
+                        <select id="age-group" class="w-full p-2 border rounded">
+                            <option value="0-5m">0～5（月）</option>
+                            <option value="6-11m">6～11（月）</option>
+                            <option value="1-2">1～2（歳）</option>
+                            <option value="3-5">3～5（歳）</option>
+                            <option value="6-7">6～7（歳）</option>
+                            <option value="8-9">8～9（歳）</option>
+                            <option value="10-11">10～11（歳）</option>
+                            <option value="12-14">12～14（歳）</option>
+                            <option value="15-17">15～17（歳）</option>
+                            <option value="18-29">18～29（歳）</option>
+                            <option value="30-49" selected>30～49（歳）</option>
+                            <option value="50-64">50～64（歳）</option>
+                            <option value="65-74">65～74（歳）</option>
+                            <option value="75+">75歳以上</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">身体活動レベル</label>
+                        <select id="activity-level" class="w-full p-2 border rounded">
+                            <option value="low">低い</option>
+                            <option value="medium" selected>ふつう</option>
+                            <option value="high">高い</option>
+                        </select>
+                        <div class="mt-1 text-xs text-gray-500">
+                            <p><strong>低い</strong>: デスクワーク中心で、特に運動習慣がない</p>
+                            <p><strong>ふつう</strong>: 通勤・家事などでやや活動的、または週に1-2回軽い運動をする</p>
+                            <p><strong>高い</strong>: 立ち仕事が多い、または定期的に運動習慣がある</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 女性の特記事項 -->
+                <div class="p-3 bg-white rounded-lg shadow-sm female-only hidden">
+                    <h3 class="text-md font-semibold mb-2">女性の特記事項</h3>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">月経の有無</label>
+                        <div class="flex items-center">
+                            <input type="radio" id="menstruation-yes" name="menstruation" value="yes" checked>
+                            <label for="menstruation-yes" class="ml-1 mr-4">あり</label>
+                            <input type="radio" id="menstruation-no" name="menstruation" value="no">
+                            <label for="menstruation-no" class="ml-1">なし</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">妊娠・授乳</label>
+                        <select id="pregnancy" class="w-full p-2 border rounded">
+                            <option value="none" selected>なし</option>
+                            <option value="early">妊娠初期</option>
+                            <option value="mid">妊娠中期</option>
+                            <option value="late">妊娠後期</option>
+                            <option value="lactation">授乳中</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- その他の情報 -->
+                <div class="p-3 bg-white rounded-lg shadow-sm">
+                    <h3 class="text-md font-semibold mb-2">身体情報</h3>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">身長 (cm)</label>
+                        <input type="number" id="height" class="w-full p-2 border rounded" placeholder="例: 170">
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">体重 (kg)</label>
+                        <input type="number" id="weight" class="w-full p-2 border rounded" placeholder="例: 60">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex justify-center">
+                <button id="save-settings" class="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg transition duration-200">
+                    <i class="fas fa-save mr-1"></i>設定を保存
+                </button>
+                <!-- 設定を保存 ボタンの下に追加 -->
+                <div id="standards-display" class="mt-6 p-3 bg-white rounded shadow-sm hidden">
+                    <h3 class="font-semibold mb-2">🔧 あなたの栄養基準値</h3>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-100">
+                            <th class="p-1 text-left">栄養素</th>
+                            <th class="p-1 text-right">基準値（種類）</th>
+                            <th class="p-1 text-right">単位</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standards-table-body"></tbody>
+                    </table>
+                </div>
+                <!-- ここまで追加 -->
+            </div>
+            
+            <div class="mt-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <div class="font-semibold mb-1 text-yellow-800">
+                    <i class="fas fa-info-circle mr-1"></i>重要
+                </div>
+                <p class="text-sm">設定に基づいて「日本人の食事摂取基準（2025年版）」から適切な基準値が自動的に選択されます。これにより、あなたに合った栄養素の必要量に対する摂取率（％）を計算できます。</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ★ユーザー設定を格納するオブジェクト（最初は空）
+        let userSettings = {};
+
+        /**
+         * ユーザー情報と nutritionStandards から、
+         * 全栄養素の基準値オブジェクトを返す
+         */
+         function calculateStandardValues(gender, ageGroup, activity, weight, menstruation, pregnancyStatus) {
+            const std = {};
+
+            // 1) エネルギー：kgあたり必要量 × 体重
+            const e = nutritionStandards.energy_per_kg[gender]?.[ageGroup]?.[activity];
+            if (e != null && weight != null && !isNaN(weight)) {
+                std["熱量"] = { value: Math.round(e * weight), type: "推定エネルギー必要量", unit: "kcal" };
+            }
+
+            const displayNames = {
+                protein:        "たんぱく質",
+                fat:            "脂質", // %エネルギーで扱う
+                saturated_fat:  "飽和脂肪酸",
+                n6_fatty_acid:  "n-6系脂肪酸",
+                n3_fatty_acid:  "n-3系脂肪酸",
+                carbohydrate:   "炭水化物", // %エネルギーで扱う
+                dietary_fiber:  "食物繊維",
+                vitamin_a:      "ビタミンA",
+                vitamin_d:      "ビタミンD",
+                vitamin_e:      "ビタミンE",
+                vitamin_k:      "ビタミンK",
+                vitamin_b1:     "ビタミンB1",
+                vitamin_b2:     "ビタミンB2",
+                niacin:         "ナイアシン",
+                vitamin_b6:     "ビタミンB6",
+                vitamin_b12:    "ビタミンB12",
+                folate:         "葉酸",
+                pantothenic_acid:"パントテン酸",
+                biotin:         "ビオチン",
+                vitamin_c:      "ビタミンC",
+                sodium:         "食塩相当量",
+                potassium:      "カリウム",
+                calcium:        "カルシウム",
+                magnesium:      "マグネシウム",
+                phosphorus:     "リン",
+                iron:           "鉄",
+                zinc:           "亜鉛",
+                copper:         "銅",
+                manganese:      "マンガン",
+                iodine:         "ヨウ素",
+                selenium:       "セレン",
+                chromium:       "クロム",
+                molybdenum:     "モリブデン"
+            };
+
+            Object.keys(displayNames).forEach(key => {
+                const nutrientName = displayNames[key];
+                const data = nutritionStandards[key]?.[gender]?.[ageGroup];
+                if (!data) return;
+
+                let val = null;
+                let type = null;
+                let unit = getUnit(nutrientName); // デフォルトの単位を取得
+
+                // 脂質と炭水化物は%エネルギーとして特別扱い
+                if (key === "fat" || key === "carbohydrate") {
+                    if (data.dg) { // "20-30" や "50-65" のような形式
+                        val = data.dg; // 文字列のまま保持
+                        type = "目標量";
+                        unit = "%エネルギー"; // 単位を%エネルギーに設定
+                    } else if (data.ai) { // 乳児期など
+                        val = data.ai;
+                        type = "目安量";
+                        unit = "%エネルギー";
+                    }
+                } else {
+                    // 他の栄養素の処理 (鉄の月経考慮など含む)
+                    if (key === "iron" && gender === "female" && ageGroup in data) {
+                        const ironDataToUse = (menstruation === "yes" && data.with_menstruation) ? data.with_menstruation : 
+                                            ((menstruation === "no" && data.no_menstruation) ? data.no_menstruation : data);
+                        if (ironDataToUse.rda != null) { val = ironDataToUse.rda; type = "推奨量"; }
+                        else if (ironDataToUse.ear != null) { val = ironDataToUse.ear; type = "推定平均必要量"; }
+                        else if (ironDataToUse.ai != null) { val = ironDataToUse.ai; type = "目安量"; }
+                    } else {
+                        if (data.rda != null) { val = data.rda; type = "推奨量"; }
+                        else if (data.ai != null) { val = data.ai; type = "目安量"; }
+                        else if (data.dg) {
+                            if (typeof data.dg === "string" && data.dg.includes("-")) {
+                                const [min, max] = data.dg.split("-").map(v=>parseFloat(v));
+                                val = Math.round((min + max) / 2); type = "目標量";
+                            } else if (typeof data.dg === "string" && data.dg.includes("以上")) {
+                                val = parseFloat(data.dg.replace("以上","")); type = "目標量（下限）";
+                            } else if (typeof data.dg === "string" && data.dg.includes("以下")) {
+                                val = parseFloat(data.dg.replace("以下","")); type = "目標量（上限）";
+                            } else { val = data.dg; type = "目標量"; }
+                        } else if (data.ear != null) { val = data.ear; type = "推定平均必要量"; }
+                    }
+                }
+                
+                // 妊娠・授乳期の追加量を考慮 (女性のみ) - 脂質・炭水化物は付加量なしの想定
+                if (gender === "female" && pregnancyStatus && pregnancyStatus !== "none" && key !== "fat" && key !== "carbohydrate") {
+                    const addData = nutritionStandards[key]?.[gender]?.[pregnancyStatus];
+                    if (addData) {
+                        if (addData.rda_add != null && type === "推奨量" && val != null) val += addData.rda_add;
+                        else if (addData.ear_add != null && type === "推定平均必要量" && val != null) val += addData.ear_add;
+                        else if (addData.ai_add != null && type === "目安量" && val != null) val += addData.ai_add;
+                    }
+                }
+                
+                // 食塩相当量の単位は 'g'
+                if (key === "sodium") unit = "g";
+
+                if (val !== null) {
+                    std[nutrientName] = { value: val, type: type, unit: unit };
+                }
+            });
+            
+            std["糖質"] = { value: null, type: "基準値なし", unit: "g" }; // 糖質は基準値なし
+            return std;
+        }
+
+        /**
+         * ユーザー設定から calculateStandardValues() を呼び出し、
+         * 基準値テーブルに書き出して表示する関数
+         */
+         function displayStandards() {
+            // 1) フォーム入力値を取得する
+            const gender    = document.getElementById('gender').value;
+            const ageGroup  = document.getElementById('age-group').value;
+            const activity  = document.getElementById('activity-level').value;
+            const weight    = parseFloat(document.getElementById('weight').value);
+            const menstruation = document.querySelector('input[name="menstruation"]:checked')?.value;
+            const pregnancyStatus = document.getElementById('pregnancy').value;
+
+            // 2) calculateStandardValues() で全栄養素の基準値オブジェクトを取得
+            const standards = calculateStandardValues(
+                gender,
+                ageGroup,
+                activity,
+                weight,
+                menstruation,
+                pregnancyStatus
+            );
+
+            // 3) <tbody> をまっさらにする
+            const tbody = document.getElementById('standards-table-body');
+            tbody.innerHTML = '';
+
+            // 4) 返ってきたオブジェクトをループして、行を組み立て
+            Object.entries(standards).forEach(([nutrient, data]) => {
+                // 糖質など基準値がないものは表示しない
+                if (data.value === null && data.type === "基準値なし") return;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-1 text-left"><span>${nutrient}</span></td>
+                    <td class="p-1 text-right">${data.value} <span class="text-xs text-gray-500">(${data.type})</span></td>
+                    <td class="p-1 text-right">${data.unit}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // 5) テーブル全体を表示する
+            document.getElementById('standards-display').classList.remove('hidden');
+        }
+
+        // 日本人の食事摂取基準（2025年版）データベース
+        const nutritionStandards = {
+            // 体重1kg当たりの推定エネルギー必要量 (kcal/kg/日)
+            "energy_per_kg": {
+                "male": {
+                    "0-5m": { "low": null, "medium": 82.4, "high": null },
+                    "6-11m": { "low": null, "medium": 79.5, "high": null }, // 修正：原文は6-8m, 9-11mだが、age-groupの区分に合わせる
+                    "1-2": { "low": null, "medium": 82.4, "high": null },
+                    "3-5": { "low": null, "medium": 79.5, "high": null },
+                    "6-7": { "low": 59.8, "medium": 68.7, "high": 77.5 },
+                    "8-9": { "low": 57.1, "medium": 65.3, "high": 73.4 },
+                    "10-11": { "low": 54.2, "medium": 61.7, "high": 69.2 },
+                    "12-14": { "low": 46.5, "medium": 52.7, "high": 58.9 },
+                    "15-17": { "low": 41.9, "medium": 47.3, "high": 52.7 },
+                    "18-29": { "low": 35.6, "medium": 41.5, "high": 47.4 },
+                    "30-49": { "low": 33.8, "medium": 39.4, "high": 45.0 },
+                    "50-64": { "low": 32.7, "medium": 38.2, "high": 43.6 },
+                    "65-74": { "low": 32.4, "medium": 36.7, "high": 41.0 },
+                    "75+": { "low": 30.1, "medium": 36.6, "high": null }
+                },
+                "female": {
+                    "0-5m": { "low": null, "medium": 80.6, "high": null },
+                     "6-11m": { "low": null, "medium": 75.7, "high": null }, // 修正：原文は6-8m, 9-11mだが、age-groupの区分に合わせる
+                    "1-2": { "low": null, "medium": 80.6, "high": null },
+                    "3-5": { "low": null, "medium": 75.7, "high": null },
+                    "6-7": { "low": 56.6, "medium": 64.9, "high": 73.3 },
+                    "8-9": { "low": 53.6, "medium": 61.3, "high": 68.9 },
+                    "10-11": { "low": 50.5, "medium": 57.4, "high": 64.4 },
+                    "12-14": { "low": 44.4, "medium": 50.3, "high": 56.2 },
+                    "15-17": { "low": 39.2, "medium": 44.3, "high": 49.3 },
+                    "18-29": { "low": 33.2, "medium": 38.7, "high": 44.2 },
+                    "30-49": { "low": 32.9, "medium": 38.3, "high": 43.8 },
+                    "50-64": { "low": 31.1, "medium": 36.2, "high": 41.4 },
+                    "65-74": { "low": 31.1, "medium": 35.2, "high": 39.3 },
+                    "75+": { "low": 29.0, "medium": 35.2, "high": null }
+                }
+            },
+            
+            // たんぱく質の食事摂取基準 (g/日)
+            "protein": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 10 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 20 }, // 6-8m:15, 9-11m:25 の中間値または代表値
+                    "1-2": { "ear": 15, "rda": 20, "ai": null },
+                    "3-5": { "ear": 20, "rda": 25, "ai": null },
+                    "6-7": { "ear": 25, "rda": 30, "ai": null },
+                    "8-9": { "ear": 30, "rda": 40, "ai": null },
+                    "10-11": { "ear": 40, "rda": 45, "ai": null },
+                    "12-14": { "ear": 50, "rda": 60, "ai": null },
+                    "15-17": { "ear": 50, "rda": 65, "ai": null },
+                    "18-29": { "ear": 50, "rda": 65, "ai": null },
+                    "30-49": { "ear": 50, "rda": 65, "ai": null },
+                    "50-64": { "ear": 50, "rda": 65, "ai": null },
+                    "65-74": { "ear": 50, "rda": 60, "ai": null },
+                    "75+": { "ear": 50, "rda": 60, "ai": null }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 10 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 20 }, // 6-8m:15, 9-11m:25 の中間値または代表値
+                    "1-2": { "ear": 15, "rda": 20, "ai": null },
+                    "3-5": { "ear": 20, "rda": 25, "ai": null },
+                    "6-7": { "ear": 25, "rda": 30, "ai": null },
+                    "8-9": { "ear": 30, "rda": 40, "ai": null },
+                    "10-11": { "ear": 40, "rda": 50, "ai": null },
+                    "12-14": { "ear": 45, "rda": 55, "ai": null },
+                    "15-17": { "ear": 45, "rda": 55, "ai": null },
+                    "18-29": { "ear": 40, "rda": 50, "ai": null },
+                    "30-49": { "ear": 40, "rda": 50, "ai": null },
+                    "50-64": { "ear": 40, "rda": 50, "ai": null },
+                    "65-74": { "ear": 40, "rda": 50, "ai": null },
+                    "75+": { "ear": 40, "rda": 50, "ai": null },
+                    "pregnancy_early": { "ear_add": 0, "rda_add": 0 },
+                    "pregnancy_mid": { "ear_add": 5, "rda_add": 5 },
+                    "pregnancy_late": { "ear_add": 20, "rda_add": 25 },
+                    "lactation": { "ear_add": 15, "rda_add": 20 }
+                }
+            },
+            
+            // 脂質の食事摂取基準 (%エネルギー)
+            "fat": {
+                "male": {
+                    "0-5m": { "ai": 50 },
+                    "6-11m": { "ai": 40 },
+                    "1-2": { "ai": null, "dg": "20-30" },
+                    "3-5": { "ai": null, "dg": "20-30" },
+                    "6-7": { "ai": null, "dg": "20-30" },
+                    "8-9": { "ai": null, "dg": "20-30" },
+                    "10-11": { "ai": null, "dg": "20-30" },
+                    "12-14": { "ai": null, "dg": "20-30" },
+                    "15-17": { "ai": null, "dg": "20-30" },
+                    "18-29": { "ai": null, "dg": "20-30" },
+                    "30-49": { "ai": null, "dg": "20-30" },
+                    "50-64": { "ai": null, "dg": "20-30" },
+                    "65-74": { "ai": null, "dg": "20-30" },
+                    "75+": { "ai": null, "dg": "20-30" }
+                },
+                "female": {
+                    "0-5m": { "ai": 50 },
+                    "6-11m": { "ai": 40 },
+                    "1-2": { "ai": null, "dg": "20-30" },
+                    "3-5": { "ai": null, "dg": "20-30" },
+                    "6-7": { "ai": null, "dg": "20-30" },
+                    "8-9": { "ai": null, "dg": "20-30" },
+                    "10-11": { "ai": null, "dg": "20-30" },
+                    "12-14": { "ai": null, "dg": "20-30" },
+                    "15-17": { "ai": null, "dg": "20-30" },
+                    "18-29": { "ai": null, "dg": "20-30" },
+                    "30-49": { "ai": null, "dg": "20-30" },
+                    "50-64": { "ai": null, "dg": "20-30" },
+                    "65-74": { "ai": null, "dg": "20-30" },
+                    "75+": { "ai": null, "dg": "20-30" },
+                    "pregnancy": { "ai": null, "dg": "20-30" },
+                    "lactation": { "ai": null, "dg": "20-30" }
+                }
+            },
+            
+            // 飽和脂肪酸の食事摂取基準 (%エネルギー)
+            "saturated_fat": {
+                "male": {
+                    "0-5m": { "dg": null },
+                    "6-11m": { "dg": null },
+                    "1-2": { "dg": null },
+                    "3-5": { "dg": "10以下" },
+                    "6-7": { "dg": "10以下" },
+                    "8-9": { "dg": "10以下" },
+                    "10-11": { "dg": "10以下" },
+                    "12-14": { "dg": "10以下" },
+                    "15-17": { "dg": "9以下" },
+                    "18-29": { "dg": "7以下" },
+                    "30-49": { "dg": "7以下" },
+                    "50-64": { "dg": "7以下" },
+                    "65-74": { "dg": "7以下" },
+                    "75+": { "dg": "7以下" }
+                },
+                "female": {
+                    "0-5m": { "dg": null },
+                    "6-11m": { "dg": null },
+                    "1-2": { "dg": null },
+                    "3-5": { "dg": "10以下" },
+                    "6-7": { "dg": "10以下" },
+                    "8-9": { "dg": "10以下" },
+                    "10-11": { "dg": "10以下" },
+                    "12-14": { "dg": "10以下" },
+                    "15-17": { "dg": "9以下" },
+                    "18-29": { "dg": "7以下" },
+                    "30-49": { "dg": "7以下" },
+                    "50-64": { "dg": "7以下" },
+                    "65-74": { "dg": "7以下" },
+                    "75+": { "dg": "7以下" },
+                    "pregnancy": { "dg": "7以下" },
+                    "lactation": { "dg": "7以下" }
+                }
+            },
+            
+            // n-6系脂肪酸の食事摂取基準 (g/日)
+            "n6_fatty_acid": {
+                "male": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 4 },
+                    "1-2": { "ai": 4 },
+                    "3-5": { "ai": 6 },
+                    "6-7": { "ai": 8 },
+                    "8-9": { "ai": 8 },
+                    "10-11": { "ai": 9 },
+                    "12-14": { "ai": 11 },
+                    "15-17": { "ai": 13 },
+                    "18-29": { "ai": 12 },
+                    "30-49": { "ai": 11 },
+                    "50-64": { "ai": 11 },
+                    "65-74": { "ai": 10 },
+                    "75+": { "ai": 9 }
+                },
+                "female": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 4 },
+                    "1-2": { "ai": 4 },
+                    "3-5": { "ai": 6 },
+                    "6-7": { "ai": 7 },
+                    "8-9": { "ai": 8 },
+                    "10-11": { "ai": 9 },
+                    "12-14": { "ai": 11 },
+                    "15-17": { "ai": 11 },
+                    "18-29": { "ai": 9 },
+                    "30-49": { "ai": 9 },
+                    "50-64": { "ai": 9 },
+                    "65-74": { "ai": 9 },
+                    "75+": { "ai": 8 },
+                    "pregnancy": { "ai": 9 },
+                    "lactation": { "ai": 9 }
+                }
+            },
+            
+            // n-3系脂肪酸の食事摂取基準 (g/日)
+            "n3_fatty_acid": {
+                "male": {
+                    "0-5m": { "ai": 0.9 },
+                    "6-11m": { "ai": 0.8 },
+                    "1-2": { "ai": 0.7 },
+                    "3-5": { "ai": 1.2 },
+                    "6-7": { "ai": 1.4 },
+                    "8-9": { "ai": 1.5 },
+                    "10-11": { "ai": 1.7 },
+                    "12-14": { "ai": 2.2 },
+                    "15-17": { "ai": 2.2 },
+                    "18-29": { "ai": 2.2 },
+                    "30-49": { "ai": 2.2 },
+                    "50-64": { "ai": 2.3 },
+                    "65-74": { "ai": 2.3 },
+                    "75+": { "ai": 2.3 }
+                },
+                "female": {
+                    "0-5m": { "ai": 0.9 },
+                    "6-11m": { "ai": 0.8 },
+                    "1-2": { "ai": 0.7 },
+                    "3-5": { "ai": 1.0 },
+                    "6-7": { "ai": 1.2 },
+                    "8-9": { "ai": 1.4 },
+                    "10-11": { "ai": 1.7 },
+                    "12-14": { "ai": 1.7 },
+                    "15-17": { "ai": 1.7 },
+                    "18-29": { "ai": 1.7 },
+                    "30-49": { "ai": 1.7 },
+                    "50-64": { "ai": 1.9 },
+                    "65-74": { "ai": 2.0 },
+                    "75+": { "ai": 2.0 },
+                    "pregnancy": { "ai": 1.7 },
+                    "lactation": { "ai": 1.7 }
+                }
+            },
+            
+            // 炭水化物の食事摂取基準 (%エネルギー)
+            "carbohydrate": {
+                "male": {
+                    "0-5m": { "dg": null },
+                    "6-11m": { "dg": null },
+                    "1-2": { "dg": "50-65" },
+                    "3-5": { "dg": "50-65" },
+                    "6-7": { "dg": "50-65" },
+                    "8-9": { "dg": "50-65" },
+                    "10-11": { "dg": "50-65" },
+                    "12-14": { "dg": "50-65" },
+                    "15-17": { "dg": "50-65" },
+                    "18-29": { "dg": "50-65" },
+                    "30-49": { "dg": "50-65" },
+                    "50-64": { "dg": "50-65" },
+                    "65-74": { "dg": "50-65" },
+                    "75+": { "dg": "50-65" }
+                },
+                "female": {
+                    "0-5m": { "dg": null },
+                    "6-11m": { "dg": null },
+                    "1-2": { "dg": "50-65" },
+                    "3-5": { "dg": "50-65" },
+                    "6-7": { "dg": "50-65" },
+                    "8-9": { "dg": "50-65" },
+                    "10-11": { "dg": "50-65" },
+                    "12-14": { "dg": "50-65" },
+                    "15-17": { "dg": "50-65" },
+                    "18-29": { "dg": "50-65" },
+                    "30-49": { "dg": "50-65" },
+                    "50-64": { "dg": "50-65" },
+                    "65-74": { "dg": "50-65" },
+                    "75+": { "dg": "50-65" },
+                    "pregnancy": { "dg": "50-65" },
+                    "lactation": { "dg": "50-65" }
+                }
+            },
+            
+            // 食物繊維の食事摂取基準 (g/日)
+            "dietary_fiber": {
+                "male": {
+                    "0-5m": { "dg": null },
+                    "6-11m": { "dg": null },
+                    "1-2": { "dg": null },
+                    "3-5": { "dg": "8以上" },
+                    "6-7": { "dg": "10以上" },
+                    "8-9": { "dg": "11以上" },
+                    "10-11": { "dg": "13以上" },
+                    "12-14": { "dg": "17以上" },
+                    "15-17": { "dg": "19以上" },
+                    "18-29": { "dg": "20以上" },
+                    "30-49": { "dg": "22以上" },
+                    "50-64": { "dg": "22以上" },
+                    "65-74": { "dg": "21以上" },
+                    "75+": { "dg": "20以上" }
+                },
+                "female": {
+                    "0-5m": { "dg": null },
+                    "6-11m": { "dg": null },
+                    "1-2": { "dg": null },
+                    "3-5": { "dg": "8以上" },
+                    "6-7": { "dg": "9以上" },
+                    "8-9": { "dg": "11以上" },
+                    "10-11": { "dg": "13以上" },
+                    "12-14": { "dg": "16以上" },
+                    "15-17": { "dg": "18以上" },
+                    "18-29": { "dg": "18以上" },
+                    "30-49": { "dg": "18以上" },
+                    "50-64": { "dg": "18以上" },
+                    "65-74": { "dg": "18以上" },
+                    "75+": { "dg": "17以上" },
+                    "pregnancy": { "dg": "18以上" },
+                    "lactation": { "dg": "18以上" }
+                }
+            },
+            
+            // ビタミンAの食事摂取基準 (μgRAE/日)
+            "vitamin_a": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 300, "ul": 600 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 400, "ul": 600 },
+                    "1-2": { "ear": 300, "rda": 400, "ai": null, "ul": 600 },
+                    "3-5": { "ear": 350, "rda": 500, "ai": null, "ul": 700 },
+                    "6-7": { "ear": 350, "rda": 500, "ai": null, "ul": 950 },
+                    "8-9": { "ear": 350, "rda": 500, "ai": null, "ul": 1200 },
+                    "10-11": { "ear": 450, "rda": 600, "ai": null, "ul": 1500 },
+                    "12-14": { "ear": 550, "rda": 800, "ai": null, "ul": 2100 },
+                    "15-17": { "ear": 650, "rda": 900, "ai": null, "ul": 2600 },
+                    "18-29": { "ear": 600, "rda": 850, "ai": null, "ul": 2700 },
+                    "30-49": { "ear": 650, "rda": 900, "ai": null, "ul": 2700 },
+                    "50-64": { "ear": 650, "rda": 900, "ai": null, "ul": 2700 },
+                    "65-74": { "ear": 600, "rda": 850, "ai": null, "ul": 2700 },
+                    "75+": { "ear": 550, "rda": 800, "ai": null, "ul": 2700 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 300, "ul": 600 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 400, "ul": 600 },
+                    "1-2": { "ear": 250, "rda": 350, "ai": null, "ul": 600 },
+                    "3-5": { "ear": 350, "rda": 500, "ai": null, "ul": 700 },
+                    "6-7": { "ear": 350, "rda": 500, "ai": null, "ul": 950 },
+                    "8-9": { "ear": 350, "rda": 500, "ai": null, "ul": 1200 },
+                    "10-11": { "ear": 400, "rda": 600, "ai": null, "ul": 1500 },
+                    "12-14": { "ear": 500, "rda": 700, "ai": null, "ul": 2100 },
+                    "15-17": { "ear": 500, "rda": 650, "ai": null, "ul": 2600 },
+                    "18-29": { "ear": 450, "rda": 650, "ai": null, "ul": 2700 },
+                    "30-49": { "ear": 500, "rda": 700, "ai": null, "ul": 2700 },
+                    "50-64": { "ear": 500, "rda": 700, "ai": null, "ul": 2700 },
+                    "65-74": { "ear": 500, "rda": 700, "ai": null, "ul": 2700 },
+                    "75+": { "ear": 450, "rda": 650, "ai": null, "ul": 2700 },
+                    "pregnancy_early": { "ear_add": 0, "rda_add": 0, "ul": null },
+                    "pregnancy_mid": { "ear_add": 0, "rda_add": 0, "ul": null },
+                    "pregnancy_late": { "ear_add": 60, "rda_add": 80, "ul": null },
+                    "lactation": { "ear_add": 300, "rda_add": 450, "ul": null }
+                }
+            },
+
+            // ビタミンDの食事摂取基準 (μg/日)
+            "vitamin_d": {
+                "male": {
+                    "0-5m": { "ai": 5.0, "ul": 25 },
+                    "6-11m": { "ai": 5.0, "ul": 25 },
+                    "1-2": { "ai": 3.5, "ul": 25 },
+                    "3-5": { "ai": 4.5, "ul": 30 },
+                    "6-7": { "ai": 5.5, "ul": 40 },
+                    "8-9": { "ai": 6.5, "ul": 40 },
+                    "10-11": { "ai": 8.0, "ul": 60 },
+                    "12-14": { "ai": 9.0, "ul": 80 },
+                    "15-17": { "ai": 9.0, "ul": 90 },
+                    "18-29": { "ai": 9.0, "ul": 100 },
+                    "30-49": { "ai": 9.0, "ul": 100 },
+                    "50-64": { "ai": 9.0, "ul": 100 },
+                    "65-74": { "ai": 9.0, "ul": 100 },
+                    "75+": { "ai": 9.0, "ul": 100 }
+                },
+                "female": {
+                    "0-5m": { "ai": 5.0, "ul": 25 },
+                    "6-11m": { "ai": 5.0, "ul": 25 },
+                    "1-2": { "ai": 3.5, "ul": 25 },
+                    "3-5": { "ai": 4.5, "ul": 30 },
+                    "6-7": { "ai": 5.5, "ul": 40 },
+                    "8-9": { "ai": 6.5, "ul": 40 },
+                    "10-11": { "ai": 8.0, "ul": 60 },
+                    "12-14": { "ai": 9.0, "ul": 80 },
+                    "15-17": { "ai": 9.0, "ul": 90 },
+                    "18-29": { "ai": 9.0, "ul": 100 },
+                    "30-49": { "ai": 9.0, "ul": 100 },
+                    "50-64": { "ai": 9.0, "ul": 100 },
+                    "65-74": { "ai": 9.0, "ul": 100 },
+                    "75+": { "ai": 9.0, "ul": 100 },
+                    "pregnancy": { "ai": 9.0, "ul": null },
+                    "lactation": { "ai": 9.0, "ul": null }
+                }
+            },
+
+            // ビタミンEの食事摂取基準 (mg/日)
+            "vitamin_e": {
+                "male": {
+                    "0-5m": { "ai": 3.0, "ul": null },
+                    "6-11m": { "ai": 4.0, "ul": null },
+                    "1-2": { "ai": 3.0, "ul": 150 },
+                    "3-5": { "ai": 4.0, "ul": 200 },
+                    "6-7": { "ai": 4.5, "ul": 300 },
+                    "8-9": { "ai": 5.0, "ul": 350 },
+                    "10-11": { "ai": 5.0, "ul": 450 },
+                    "12-14": { "ai": 6.5, "ul": 650 },
+                    "15-17": { "ai": 7.0, "ul": 750 },
+                    "18-29": { "ai": 6.5, "ul": 800 },
+                    "30-49": { "ai": 6.5, "ul": 800 },
+                    "50-64": { "ai": 6.5, "ul": 800 },
+                    "65-74": { "ai": 7.5, "ul": 800 },
+                    "75+": { "ai": 7.0, "ul": 800 }
+                },
+                "female": {
+                    "0-5m": { "ai": 3.0, "ul": null },
+                    "6-11m": { "ai": 4.0, "ul": null },
+                    "1-2": { "ai": 3.0, "ul": 150 },
+                    "3-5": { "ai": 4.0, "ul": 200 },
+                    "6-7": { "ai": 4.0, "ul": 300 },
+                    "8-9": { "ai": 5.0, "ul": 350 },
+                    "10-11": { "ai": 5.5, "ul": 450 },
+                    "12-14": { "ai": 6.0, "ul": 600 },
+                    "15-17": { "ai": 6.0, "ul": 650 },
+                    "18-29": { "ai": 5.0, "ul": 650 },
+                    "30-49": { "ai": 6.0, "ul": 700 },
+                    "50-64": { "ai": 6.0, "ul": 700 },
+                    "65-74": { "ai": 7.0, "ul": 700 },
+                    "75+": { "ai": 6.0, "ul": 650 },
+                    "pregnancy": { "ai": 5.5, "ul": null },
+                    "lactation": { "ai": 5.5, "ul": null }
+                }
+            },
+
+            // ビタミンKの食事摂取基準 (μg/日)
+            "vitamin_k": {
+                "male": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 7 },
+                    "1-2": { "ai": 50 },
+                    "3-5": { "ai": 60 },
+                    "6-7": { "ai": 80 },
+                    "8-9": { "ai": 90 },
+                    "10-11": { "ai": 110 },
+                    "12-14": { "ai": 140 },
+                    "15-17": { "ai": 150 },
+                    "18-29": { "ai": 150 },
+                    "30-49": { "ai": 150 },
+                    "50-64": { "ai": 150 },
+                    "65-74": { "ai": 150 },
+                    "75+": { "ai": 150 }
+                },
+                "female": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 7 },
+                    "1-2": { "ai": 60 },
+                    "3-5": { "ai": 70 },
+                    "6-7": { "ai": 90 },
+                    "8-9": { "ai": 110 },
+                    "10-11": { "ai": 130 },
+                    "12-14": { "ai": 150 },
+                    "15-17": { "ai": 150 },
+                    "18-29": { "ai": 150 },
+                    "30-49": { "ai": 150 },
+                    "50-64": { "ai": 150 },
+                    "65-74": { "ai": 150 },
+                    "75+": { "ai": 150 },
+                    "pregnancy": { "ai": 150 },
+                    "lactation": { "ai": 150 }
+                }
+            },
+
+            // ビタミンB1の食事摂取基準 (mg/日)
+            "vitamin_b1": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.1 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.2 },
+                    "1-2": { "ear": 0.3, "rda": 0.4, "ai": null },
+                    "3-5": { "ear": 0.4, "rda": 0.5, "ai": null },
+                    "6-7": { "ear": 0.5, "rda": 0.7, "ai": null },
+                    "8-9": { "ear": 0.6, "rda": 0.8, "ai": null },
+                    "10-11": { "ear": 0.7, "rda": 0.9, "ai": null },
+                    "12-14": { "ear": 0.8, "rda": 1.1, "ai": null },
+                    "15-17": { "ear": 0.9, "rda": 1.2, "ai": null },
+                    "18-29": { "ear": 0.8, "rda": 1.1, "ai": null },
+                    "30-49": { "ear": 0.8, "rda": 1.2, "ai": null },
+                    "50-64": { "ear": 0.8, "rda": 1.1, "ai": null },
+                    "65-74": { "ear": 0.7, "rda": 1.0, "ai": null },
+                    "75+": { "ear": 0.7, "rda": 1.0, "ai": null }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.1 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.2 },
+                    "1-2": { "ear": 0.3, "rda": 0.4, "ai": null },
+                    "3-5": { "ear": 0.4, "rda": 0.5, "ai": null },
+                    "6-7": { "ear": 0.4, "rda": 0.6, "ai": null },
+                    "8-9": { "ear": 0.5, "rda": 0.7, "ai": null },
+                    "10-11": { "ear": 0.6, "rda": 0.9, "ai": null },
+                    "12-14": { "ear": 0.7, "rda": 1.0, "ai": null },
+                    "15-17": { "ear": 0.7, "rda": 1.0, "ai": null },
+                    "18-29": { "ear": 0.6, "rda": 0.8, "ai": null },
+                    "30-49": { "ear": 0.6, "rda": 0.9, "ai": null },
+                    "50-64": { "ear": 0.6, "rda": 0.8, "ai": null },
+                    "65-74": { "ear": 0.6, "rda": 0.8, "ai": null },
+                    "75+": { "ear": 0.5, "rda": 0.7, "ai": null },
+                    "pregnancy_add": { "ear": 0.1, "rda": 0.2, "ai": null },
+                    "lactation_add": { "ear": 0.2, "rda": 0.2, "ai": null }
+                }
+            },
+
+            // ビタミンB2の食事摂取基準 (mg/日)
+            "vitamin_b2": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.3 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.4 },
+                    "1-2": { "ear": 0.5, "rda": 0.6, "ai": null },
+                    "3-5": { "ear": 0.7, "rda": 0.8, "ai": null },
+                    "6-7": { "ear": 0.8, "rda": 0.9, "ai": null },
+                    "8-9": { "ear": 0.9, "rda": 1.1, "ai": null },
+                    "10-11": { "ear": 1.1, "rda": 1.4, "ai": null },
+                    "12-14": { "ear": 1.3, "rda": 1.6, "ai": null },
+                    "15-17": { "ear": 1.4, "rda": 1.7, "ai": null },
+                    "18-29": { "ear": 1.3, "rda": 1.6, "ai": null },
+                    "30-49": { "ear": 1.4, "rda": 1.7, "ai": null },
+                    "50-64": { "ear": 1.3, "rda": 1.6, "ai": null },
+                    "65-74": { "ear": 1.2, "rda": 1.4, "ai": null },
+                    "75+": { "ear": 1.1, "rda": 1.4, "ai": null }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.3 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.4 },
+                    "1-2": { "ear": 0.5, "rda": 0.5, "ai": null },
+                    "3-5": { "ear": 0.6, "rda": 0.8, "ai": null },
+                    "6-7": { "ear": 0.7, "rda": 0.9, "ai": null },
+                    "8-9": { "ear": 0.9, "rda": 1.0, "ai": null },
+                    "10-11": { "ear": 1.1, "rda": 1.3, "ai": null },
+                    "12-14": { "ear": 1.2, "rda": 1.4, "ai": null },
+                    "15-17": { "ear": 1.2, "rda": 1.4, "ai": null },
+                    "18-29": { "ear": 1.0, "rda": 1.2, "ai": null },
+                    "30-49": { "ear": 1.0, "rda": 1.2, "ai": null },
+                    "50-64": { "ear": 1.0, "rda": 1.2, "ai": null },
+                    "65-74": { "ear": 0.9, "rda": 1.1, "ai": null },
+                    "75+": { "ear": 0.9, "rda": 1.1, "ai": null },
+                    "pregnancy_add": { "ear": 0.2, "rda": 0.3, "ai": null },
+                    "lactation_add": { "ear": 0.5, "rda": 0.6, "ai": null }
+                }
+            },
+
+            // ナイアシンの食事摂取基準 (mgNE/日)
+            "niacin": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 2, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 3, "ul": null },
+                    "1-2": { "ear": 5, "rda": 6, "ai": null, "ul": 60, "ul_nicotinic_acid": 15 },
+                    "3-5": { "ear": 6, "rda": 8, "ai": null, "ul": 80, "ul_nicotinic_acid": 20 },
+                    "6-7": { "ear": 7, "rda": 9, "ai": null, "ul": 100, "ul_nicotinic_acid": 30 },
+                    "8-9": { "ear": 9, "rda": 11, "ai": null, "ul": 150, "ul_nicotinic_acid": 35 },
+                    "10-11": { "ear": 11, "rda": 13, "ai": null, "ul": 200, "ul_nicotinic_acid": 45 },
+                    "12-14": { "ear": 12, "rda": 15, "ai": null, "ul": 250, "ul_nicotinic_acid": 60 },
+                    "15-17": { "ear": 14, "rda": 16, "ai": null, "ul": 300, "ul_nicotinic_acid": 70 },
+                    "18-29": { "ear": 13, "rda": 15, "ai": null, "ul": 300, "ul_nicotinic_acid": 80 },
+                    "30-49": { "ear": 13, "rda": 16, "ai": null, "ul": 350, "ul_nicotinic_acid": 85 },
+                    "50-64": { "ear": 13, "rda": 15, "ai": null, "ul": 350, "ul_nicotinic_acid": 85 },
+                    "65-74": { "ear": 11, "rda": 14, "ai": null, "ul": 300, "ul_nicotinic_acid": 80 },
+                    "75+": { "ear": 11, "rda": 13, "ai": null, "ul": 300, "ul_nicotinic_acid": 75 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 2, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 3, "ul": null },
+                    "1-2": { "ear": 4, "rda": 5, "ai": null, "ul": 60, "ul_nicotinic_acid": 15 },
+                    "3-5": { "ear": 6, "rda": 7, "ai": null, "ul": 80, "ul_nicotinic_acid": 20 },
+                    "6-7": { "ear": 7, "rda": 8, "ai": null, "ul": 100, "ul_nicotinic_acid": 30 },
+                    "8-9": { "ear": 8, "rda": 10, "ai": null, "ul": 150, "ul_nicotinic_acid": 35 },
+                    "10-11": { "ear": 10, "rda": 12, "ai": null, "ul": 200, "ul_nicotinic_acid": 45 },
+                    "12-14": { "ear": 12, "rda": 14, "ai": null, "ul": 250, "ul_nicotinic_acid": 60 },
+                    "15-17": { "ear": 11, "rda": 13, "ai": null, "ul": 250, "ul_nicotinic_acid": 65 },
+                    "18-29": { "ear": 9, "rda": 11, "ai": null, "ul": 250, "ul_nicotinic_acid": 65 },
+                    "30-49": { "ear": 10, "rda": 12, "ai": null, "ul": 250, "ul_nicotinic_acid": 65 },
+                    "50-64": { "ear": 9, "rda": 11, "ai": null, "ul": 250, "ul_nicotinic_acid": 65 },
+                    "65-74": { "ear": 9, "rda": 11, "ai": null, "ul": 250, "ul_nicotinic_acid": 65 },
+                    "75+": { "ear": 8, "rda": 10, "ai": null, "ul": 250, "ul_nicotinic_acid": 60 },
+                    "pregnancy_add": { "ear": 0, "rda": 0, "ai": null, "ul": null },
+                    "lactation_add": { "ear": 3, "rda": 3, "ai": null, "ul": null }
+                }
+            },
+
+            // ビタミンB6の食事摂取基準 (mg/日)
+            "vitamin_b6": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.2, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.3, "ul": null },
+                    "1-2": { "ear": 0.4, "rda": 0.5, "ai": null, "ul": 10 },
+                    "3-5": { "ear": 0.5, "rda": 0.6, "ai": null, "ul": 15 },
+                    "6-7": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 20 },
+                    "8-9": { "ear": 0.8, "rda": 0.9, "ai": null, "ul": 25 },
+                    "10-11": { "ear": 0.9, "rda": 1.0, "ai": null, "ul": 30 },
+                    "12-14": { "ear": 1.2, "rda": 1.4, "ai": null, "ul": 40 },
+                    "15-17": { "ear": 1.2, "rda": 1.5, "ai": null, "ul": 50 },
+                    "18-29": { "ear": 1.2, "rda": 1.5, "ai": null, "ul": 55 },
+                    "30-49": { "ear": 1.2, "rda": 1.5, "ai": null, "ul": 60 },
+                    "50-64": { "ear": 1.2, "rda": 1.5, "ai": null, "ul": 60 },
+                    "65-74": { "ear": 1.2, "rda": 1.4, "ai": null, "ul": 55 },
+                    "75+": { "ear": 1.2, "rda": 1.4, "ai": null, "ul": 50 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.2, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.3, "ul": null },
+                    "1-2": { "ear": 0.4, "rda": 0.5, "ai": null, "ul": 10 },
+                    "3-5": { "ear": 0.5, "rda": 0.6, "ai": null, "ul": 15 },
+                    "6-7": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 20 },
+                    "8-9": { "ear": 0.8, "rda": 0.9, "ai": null, "ul": 25 },
+                    "10-11": { "ear": 1.0, "rda": 1.2, "ai": null, "ul": 30 },
+                    "12-14": { "ear": 1.1, "rda": 1.3, "ai": null, "ul": 40 },
+                    "15-17": { "ear": 1.1, "rda": 1.3, "ai": null, "ul": 45 },
+                    "18-29": { "ear": 1.0, "rda": 1.2, "ai": null, "ul": 45 },
+                    "30-49": { "ear": 1.0, "rda": 1.2, "ai": null, "ul": 45 },
+                    "50-64": { "ear": 1.0, "rda": 1.2, "ai": null, "ul": 45 },
+                    "65-74": { "ear": 1.0, "rda": 1.2, "ai": null, "ul": 45 },
+                    "75+": { "ear": 1.0, "rda": 1.2, "ai": null, "ul": 40 },
+                    "pregnancy_add": { "ear": 0.2, "rda": 0.2, "ai": null, "ul": null },
+                    "lactation_add": { "ear": 0.3, "rda": 0.3, "ai": null, "ul": null }
+                }
+            },
+
+            // ビタミンB12の食事摂取基準 (μg/日)
+            "vitamin_b12": {
+                "male": {
+                    "0-5m": { "ai": 0.4 },
+                    "6-11m": { "ai": 0.9 },
+                    "1-2": { "ai": 1.5 },
+                    "3-5": { "ai": 1.5 },
+                    "6-7": { "ai": 2.0 },
+                    "8-9": { "ai": 2.5 },
+                    "10-11": { "ai": 3.0 },
+                    "12-14": { "ai": 4.0 },
+                    "15-17": { "ai": 4.0 },
+                    "18-29": { "ai": 4.0 },
+                    "30-49": { "ai": 4.0 },
+                    "50-64": { "ai": 4.0 },
+                    "65-74": { "ai": 4.0 },
+                    "75+": { "ai": 4.0 }
+                },
+                "female": {
+                    "0-5m": { "ai": 0.4 },
+                    "6-11m": { "ai": 0.9 },
+                    "1-2": { "ai": 1.5 },
+                    "3-5": { "ai": 1.5 },
+                    "6-7": { "ai": 2.0 },
+                    "8-9": { "ai": 2.5 },
+                    "10-11": { "ai": 3.0 },
+                    "12-14": { "ai": 4.0 },
+                    "15-17": { "ai": 4.0 },
+                    "18-29": { "ai": 4.0 },
+                    "30-49": { "ai": 4.0 },
+                    "50-64": { "ai": 4.0 },
+                    "65-74": { "ai": 4.0 },
+                    "75+": { "ai": 4.0 },
+                    "pregnancy": { "ai": 4.0 },
+                    "lactation": { "ai": 4.0 }
+                }
+            },
+
+            // 葉酸の食事摂取基準 (μg/日)
+            "folate": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 40, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 70, "ul": null },
+                    "1-2": { "ear": 70, "rda": 90, "ai": null, "ul": 200 },
+                    "3-5": { "ear": 80, "rda": 100, "ai": null, "ul": 300 },
+                    "6-7": { "ear": 110, "rda": 130, "ai": null, "ul": 400 },
+                    "8-9": { "ear": 130, "rda": 150, "ai": null, "ul": 500 },
+                    "10-11": { "ear": 150, "rda": 180, "ai": null, "ul": 700 },
+                    "12-14": { "ear": 190, "rda": 230, "ai": null, "ul": 900 },
+                    "15-17": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "18-29": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "30-49": { "ear": 200, "rda": 240, "ai": null, "ul": 1000 },
+                    "50-64": { "ear": 200, "rda": 240, "ai": null, "ul": 1000 },
+                    "65-74": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "75+": { "ear": 200, "rda": 240, "ai": null, "ul": 900 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 40, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 70, "ul": null },
+                    "1-2": { "ear": 70, "rda": 90, "ai": null, "ul": 200 },
+                    "3-5": { "ear": 80, "rda": 100, "ai": null, "ul": 300 },
+                    "6-7": { "ear": 110, "rda": 130, "ai": null, "ul": 400 },
+                    "8-9": { "ear": 130, "rda": 150, "ai": null, "ul": 500 },
+                    "10-11": { "ear": 150, "rda": 180, "ai": null, "ul": 700 },
+                    "12-14": { "ear": 190, "rda": 230, "ai": null, "ul": 900 },
+                    "15-17": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "18-29": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "30-49": { "ear": 200, "rda": 240, "ai": null, "ul": 1000 },
+                    "50-64": { "ear": 200, "rda": 240, "ai": null, "ul": 1000 },
+                    "65-74": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "75+": { "ear": 200, "rda": 240, "ai": null, "ul": 900 },
+                    "pregnancy_early": { "ear_add": 0, "rda_add": 0, "ai": null, "ul": null, "supplement": 400 },
+                    "pregnancy_late": { "ear_add": 200, "rda_add": 240, "ai": null, "ul": null },
+                    "lactation": { "ear_add": 80, "rda_add": 100, "ai": null, "ul": null }
+                }
+            },
+
+            // パントテン酸の食事摂取基準 (mg/日)
+            "pantothenic_acid": {
+                "male": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 3 },
+                    "1-2": { "ai": 3 },
+                    "3-5": { "ai": 4 },
+                    "6-7": { "ai": 5 },
+                    "8-9": { "ai": 6 },
+                    "10-11": { "ai": 6 },
+                    "12-14": { "ai": 7 },
+                    "15-17": { "ai": 7 },
+                    "18-29": { "ai": 6 },
+                    "30-49": { "ai": 6 },
+                    "50-64": { "ai": 6 },
+                    "65-74": { "ai": 6 },
+                    "75+": { "ai": 6 }
+                },
+                "female": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 3 },
+                    "1-2": { "ai": 3 },
+                    "3-5": { "ai": 4 },
+                    "6-7": { "ai": 5 },
+                    "8-9": { "ai": 6 },
+                    "10-11": { "ai": 6 },
+                    "12-14": { "ai": 6 },
+                    "15-17": { "ai": 6 },
+                    "18-29": { "ai": 5 },
+                    "30-49": { "ai": 5 },
+                    "50-64": { "ai": 5 },
+                    "65-74": { "ai": 5 },
+                    "75+": { "ai": 5 },
+                    "pregnancy": { "ai": 5 },
+                    "lactation": { "ai": 6 }
+                }
+            },
+
+            // ビオチンの食事摂取基準 (μg/日)
+            "biotin": {
+                "male": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 10 },
+                    "1-2": { "ai": 20 },
+                    "3-5": { "ai": 20 },
+                    "6-7": { "ai": 30 },
+                    "8-9": { "ai": 30 },
+                    "10-11": { "ai": 40 },
+                    "12-14": { "ai": 50 },
+                    "15-17": { "ai": 50 },
+                    "18-29": { "ai": 50 },
+                    "30-49": { "ai": 50 },
+                    "50-64": { "ai": 50 },
+                    "65-74": { "ai": 50 },
+                    "75+": { "ai": 50 }
+                },
+                "female": {
+                    "0-5m": { "ai": 4 },
+                    "6-11m": { "ai": 10 },
+                    "1-2": { "ai": 20 },
+                    "3-5": { "ai": 20 },
+                    "6-7": { "ai": 30 },
+                    "8-9": { "ai": 30 },
+                    "10-11": { "ai": 40 },
+                    "12-14": { "ai": 50 },
+                    "15-17": { "ai": 50 },
+                    "18-29": { "ai": 50 },
+                    "30-49": { "ai": 50 },
+                    "50-64": { "ai": 50 },
+                    "65-74": { "ai": 50 },
+                    "75+": { "ai": 50 },
+                    "pregnancy": { "ai": 50 },
+                    "lactation": { "ai": 50 }
+                }
+            },
+
+            // ビタミンCの食事摂取基準 (mg/日)
+            "vitamin_c": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 40 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 40 },
+                    "1-2": { "ear": 30, "rda": 35, "ai": null },
+                    "3-5": { "ear": 35, "rda": 40, "ai": null },
+                    "6-7": { "ear": 40, "rda": 50, "ai": null },
+                    "8-9": { "ear": 50, "rda": 60, "ai": null },
+                    "10-11": { "ear": 60, "rda": 70, "ai": null },
+                    "12-14": { "ear": 75, "rda": 90, "ai": null },
+                    "15-17": { "ear": 80, "rda": 100, "ai": null },
+                    "18-29": { "ear": 80, "rda": 100, "ai": null },
+                    "30-49": { "ear": 80, "rda": 100, "ai": null },
+                    "50-64": { "ear": 80, "rda": 100, "ai": null },
+                    "65-74": { "ear": 80, "rda": 100, "ai": null },
+                    "75+": { "ear": 80, "rda": 100, "ai": null }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 40 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 40 },
+                    "1-2": { "ear": 30, "rda": 35, "ai": null },
+                    "3-5": { "ear": 35, "rda": 40, "ai": null },
+                    "6-7": { "ear": 40, "rda": 50, "ai": null },
+                    "8-9": { "ear": 50, "rda": 60, "ai": null },
+                    "10-11": { "ear": 60, "rda": 70, "ai": null },
+                    "12-14": { "ear": 75, "rda": 90, "ai": null },
+                    "15-17": { "ear": 80, "rda": 100, "ai": null },
+                    "18-29": { "ear": 80, "rda": 100, "ai": null },
+                    "30-49": { "ear": 80, "rda": 100, "ai": null },
+                    "50-64": { "ear": 80, "rda": 100, "ai": null },
+                    "65-74": { "ear": 80, "rda": 100, "ai": null },
+                    "75+": { "ear": 80, "rda": 100, "ai": null },
+                    "pregnancy_add": { "ear": 10, "rda": 10, "ai": null },
+                    "lactation_add": { "ear": 40, "rda": 45, "ai": null }
+                }
+            },
+
+            // ナトリウムの食事摂取基準 (mg/日、（）内は食塩相当量 [g/日])
+            "sodium": { // 値は食塩相当量(g/日)
+                "male": {
+                    "0-5m": { "ai": 0.3, "dg": null },
+                    "6-11m": { "ai": 1.5, "dg": null },
+                    "1-2": { "dg": "3.0以下" },
+                    "3-5": { "dg": "3.5以下" },
+                    "6-7": { "dg": "4.5以下" },
+                    "8-9": { "dg": "5.0以下" },
+                    "10-11": { "dg": "6.0以下" },
+                    "12-14": { "dg": "7.0以下" },
+                    "15-17": { "dg": "7.5以下" },
+                    "18-29": { "ear": 1.5, "dg": "7.5以下" },
+                    "30-49": { "ear": 1.5, "dg": "7.5以下" },
+                    "50-64": { "ear": 1.5, "dg": "7.5以下" },
+                    "65-74": { "ear": 1.5, "dg": "7.5以下" },
+                    "75+": { "ear": 1.5, "dg": "7.5以下" }
+                },
+                "female": {
+                    "0-5m": { "ai": 0.3, "dg": null },
+                    "6-11m": { "ai": 1.5, "dg": null },
+                    "1-2": { "dg": "3.0以下" }, // 日本人の食事摂取基準2020年版では1-2歳の目標量は記載なしだが、便宜上3-5歳と同等かそれ以下と想定
+                    "3-5": { "dg": "3.5以下" },
+                    "6-7": { "dg": "4.5以下" },
+                    "8-9": { "dg": "5.0以下" },
+                    "10-11": { "dg": "6.0以下" },
+                    "12-14": { "dg": "6.5以下" },
+                    "15-17": { "dg": "6.5以下" },
+                    "18-29": { "ear": 1.5, "dg": "6.5以下" },
+                    "30-49": { "ear": 1.5, "dg": "6.5以下" },
+                    "50-64": { "ear": 1.5, "dg": "6.5以下" },
+                    "65-74": { "ear": 1.5, "dg": "6.5以下" },
+                    "75+": { "ear": 1.5, "dg": "6.5以下" },
+                    "pregnancy": { "ear": 1.5, "dg": "6.5以下" }, // 妊娠中は付加量なし、非妊娠時と同じ
+                    "lactation": { "ear": 1.5, "dg": "6.5以下" }  // 授乳中も付加量なし、非妊娠時と同じ
+                },
+                "special_note": "高血圧及び慢性腎臓病(CKD)の重症化予防のための食塩相当量の量は、男女ともに6.0 g/日未満とした。"
+            },
+
+            // カリウムの食事摂取基準 (mg/日)
+            "potassium": {
+                "male": {
+                    "0-5m": { "ai": 400, "dg": null },
+                    "6-11m": { "ai": 700, "dg": null },
+                    "1-2": { "ai": 900, "dg": null },
+                    "3-5": { "ai": 1100, "dg": 1600, "dg_type": "more_than" },
+                    "6-7": { "ai": 1300, "dg": 1800, "dg_type": "more_than" },
+                    "8-9": { "ai": 1600, "dg": 2000, "dg_type": "more_than" },
+                    "10-11": { "ai": 1900, "dg": 2200, "dg_type": "more_than" },
+                    "12-14": { "ai": 2400, "dg": 2600, "dg_type": "more_than" },
+                    "15-17": { "ai": 2800, "dg": 3000, "dg_type": "more_than" },
+                    "18-29": { "ai": 2500, "dg": 3000, "dg_type": "more_than" },
+                    "30-49": { "ai": 2500, "dg": 3000, "dg_type": "more_than" },
+                    "50-64": { "ai": 2500, "dg": 3000, "dg_type": "more_than" },
+                    "65-74": { "ai": 2500, "dg": 3000, "dg_type": "more_than" },
+                    "75+": { "ai": 2500, "dg": 3000, "dg_type": "more_than" }
+                },
+                "female": {
+                    "0-5m": { "ai": 400, "dg": null },
+                    "6-11m": { "ai": 700, "dg": null },
+                    "1-2": { "ai": 800, "dg": null },
+                    "3-5": { "ai": 1000, "dg": 1400, "dg_type": "more_than" },
+                    "6-7": { "ai": 1200, "dg": 1600, "dg_type": "more_than" },
+                    "8-9": { "ai": 1400, "dg": 1800, "dg_type": "more_than" },
+                    "10-11": { "ai": 1800, "dg": 2000, "dg_type": "more_than" },
+                    "12-14": { "ai": 2200, "dg": 2400, "dg_type": "more_than" },
+                    "15-17": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "18-29": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "30-49": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "50-64": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "65-74": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "75+": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "pregnancy": { "ai": 2000, "dg": 2600, "dg_type": "more_than" },
+                    "lactation": { "ai": 2000, "dg": 2600, "dg_type": "more_than" }
+                }
+            },
+
+            // カルシウムの食事摂取基準 (mg/日)
+            "calcium": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 200, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 250, "ul": null },
+                    "1-2": { "ear": 350, "rda": 450, "ai": null, "ul": null },
+                    "3-5": { "ear": 500, "rda": 600, "ai": null, "ul": null },
+                    "6-7": { "ear": 500, "rda": 600, "ai": null, "ul": null },
+                    "8-9": { "ear": 550, "rda": 650, "ai": null, "ul": null },
+                    "10-11": { "ear": 600, "rda": 700, "ai": null, "ul": null },
+                    "12-14": { "ear": 850, "rda": 1000, "ai": null, "ul": null },
+                    "15-17": { "ear": 650, "rda": 800, "ai": null, "ul": null },
+                    "18-29": { "ear": 650, "rda": 800, "ai": null, "ul": 2500 },
+                    "30-49": { "ear": 650, "rda": 750, "ai": null, "ul": 2500 },
+                    "50-64": { "ear": 600, "rda": 750, "ai": null, "ul": 2500 },
+                    "65-74": { "ear": 600, "rda": 750, "ai": null, "ul": 2500 },
+                    "75+": { "ear": 600, "rda": 750, "ai": null, "ul": 2500 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 200, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 250, "ul": null },
+                    "1-2": { "ear": 350, "rda": 400, "ai": null, "ul": null },
+                    "3-5": { "ear": 450, "rda": 550, "ai": null, "ul": null },
+                    "6-7": { "ear": 450, "rda": 550, "ai": null, "ul": null },
+                    "8-9": { "ear": 600, "rda": 750, "ai": null, "ul": null },
+                    "10-11": { "ear": 600, "rda": 750, "ai": null, "ul": null },
+                    "12-14": { "ear": 700, "rda": 800, "ai": null, "ul": null },
+                    "15-17": { "ear": 550, "rda": 650, "ai": null, "ul": null },
+                    "18-29": { "ear": 550, "rda": 650, "ai": null, "ul": 2500 },
+                    "30-49": { "ear": 550, "rda": 650, "ai": null, "ul": 2500 },
+                    "50-64": { "ear": 550, "rda": 650, "ai": null, "ul": 2500 },
+                    "65-74": { "ear": 550, "rda": 650, "ai": null, "ul": 2500 },
+                    "75+": { "ear": 500, "rda": 600, "ai": null, "ul": 2500 },
+                    "pregnancy_add": { "ear": 0, "rda": 0, "ai": null, "ul": null },
+                    "lactation_add": { "ear": 0, "rda": 0, "ai": null, "ul": null }
+                }
+            },
+
+            // マグネシウムの食事摂取基準 (mg/日)
+            "magnesium": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 20, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 60, "ul": null },
+                    "1-2": { "ear": 60, "rda": 70, "ai": null, "ul": null },
+                    "3-5": { "ear": 80, "rda": 100, "ai": null, "ul": null },
+                    "6-7": { "ear": 110, "rda": 130, "ai": null, "ul": null },
+                    "8-9": { "ear": 140, "rda": 170, "ai": null, "ul": null },
+                    "10-11": { "ear": 180, "rda": 210, "ai": null, "ul": null },
+                    "12-14": { "ear": 250, "rda": 290, "ai": null, "ul": null },
+                    "15-17": { "ear": 300, "rda": 360, "ai": null, "ul": null },
+                    "18-29": { "ear": 280, "rda": 340, "ai": null, "ul": 350 },
+                    "30-49": { "ear": 320, "rda": 380, "ai": null, "ul": 350 },
+                    "50-64": { "ear": 310, "rda": 370, "ai": null, "ul": 350 },
+                    "65-74": { "ear": 290, "rda": 350, "ai": null, "ul": 350 },
+                    "75+": { "ear": 270, "rda": 330, "ai": null, "ul": 350 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 20, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 60, "ul": null },
+                    "1-2": { "ear": 60, "rda": 70, "ai": null, "ul": null },
+                    "3-5": { "ear": 80, "rda": 100, "ai": null, "ul": null },
+                    "6-7": { "ear": 110, "rda": 130, "ai": null, "ul": null },
+                    "8-9": { "ear": 140, "rda": 160, "ai": null, "ul": null },
+                    "10-11": { "ear": 180, "rda": 220, "ai": null, "ul": null },
+                    "12-14": { "ear": 240, "rda": 290, "ai": null, "ul": null },
+                    "15-17": { "ear": 260, "rda": 310, "ai": null, "ul": null },
+                    "18-29": { "ear": 230, "rda": 280, "ai": null, "ul": 350 },
+                    "30-49": { "ear": 240, "rda": 290, "ai": null, "ul": 350 },
+                    "50-64": { "ear": 240, "rda": 290, "ai": null, "ul": 350 },
+                    "65-74": { "ear": 240, "rda": 280, "ai": null, "ul": 350 },
+                    "75+": { "ear": 220, "rda": 270, "ai": null, "ul": 350 },
+                    "pregnancy_add": { "ear": 30, "rda": 40, "ai": null, "ul": null },
+                    "lactation_add": { "ear": 0, "rda": 0, "ai": null, "ul": null }
+                },
+                "special_note": "通常の食品以外からの摂取量の耐容上限量は、成人の場合 350mg/日、小児では 5 mg/kg 体重/日とした。それ以外の通常の食品からの摂取の場合、耐容上限量は設定しない。"
+            },
+
+            // リンの食事摂取基準 (mg/日)
+            "phosphorus": {
+                "male": {
+                    "0-5m": { "ai": 120, "ul": null },
+                    "6-11m": { "ai": 260, "ul": null },
+                    "1-2": { "ai": 600, "ul": null },
+                    "3-5": { "ai": 700, "ul": null },
+                    "6-7": { "ai": 900, "ul": null },
+                    "8-9": { "ai": 1000, "ul": null },
+                    "10-11": { "ai": 1100, "ul": null },
+                    "12-14": { "ai": 1200, "ul": null },
+                    "15-17": { "ai": 1200, "ul": null },
+                    "18-29": { "ai": 1000, "ul": 3000 },
+                    "30-49": { "ai": 1000, "ul": 3000 },
+                    "50-64": { "ai": 1000, "ul": 3000 },
+                    "65-74": { "ai": 1000, "ul": 3000 },
+                    "75+": { "ai": 1000, "ul": 3000 }
+                },
+                "female": {
+                    "0-5m": { "ai": 120, "ul": null },
+                    "6-11m": { "ai": 260, "ul": null },
+                    "1-2": { "ai": 500, "ul": null },
+                    "3-5": { "ai": 700, "ul": null },
+                    "6-7": { "ai": 800, "ul": null },
+                    "8-9": { "ai": 900, "ul": null },
+                    "10-11": { "ai": 1000, "ul": null },
+                    "12-14": { "ai": 1100, "ul": null },
+                    "15-17": { "ai": 1000, "ul": null },
+                    "18-29": { "ai": 800, "ul": 3000 },
+                    "30-49": { "ai": 800, "ul": 3000 },
+                    "50-64": { "ai": 800, "ul": 3000 },
+                    "65-74": { "ai": 800, "ul": 3000 },
+                    "75+": { "ai": 800, "ul": 3000 },
+                    "pregnancy": { "ai": 800, "ul": null },
+                    "lactation": { "ai": 800, "ul": null }
+                }
+            },
+
+            // 鉄の食事摂取基準 (mg/日)
+            "iron": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.5, "ul": null },
+                    "6-11m": { "ear": 3.5, "rda": 4.5, "ai": null, "ul": null },
+                    "1-2": { "ear": 3.0, "rda": 4.0, "ai": null, "ul": null },
+                    "3-5": { "ear": 3.5, "rda": 5.0, "ai": null, "ul": null },
+                    "6-7": { "ear": 4.5, "rda": 6.0, "ai": null, "ul": null },
+                    "8-9": { "ear": 5.5, "rda": 7.5, "ai": null, "ul": null },
+                    "10-11": { "ear": 6.5, "rda": 9.5, "ai": null, "ul": null },
+                    "12-14": { "ear": 7.5, "rda": 9.0, "ai": null, "ul": null },
+                    "15-17": { "ear": 7.5, "rda": 9.0, "ai": null, "ul": null },
+                    "18-29": { "ear": 5.5, "rda": 7.0, "ai": null, "ul": null },
+                    "30-49": { "ear": 6.0, "rda": 7.5, "ai": null, "ul": null },
+                    "50-64": { "ear": 6.0, "rda": 7.0, "ai": null, "ul": null },
+                    "65-74": { "ear": 5.5, "rda": 7.0, "ai": null, "ul": null },
+                    "75+": { "ear": 5.5, "rda": 6.5, "ai": null, "ul": null }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.5, "ul": null },
+                    "6-11m": { "ear": 3.0, "rda": 4.5, "ai": null, "ul": null },
+                    "1-2": { "ear": 3.0, "rda": 4.0, "ai": null, "ul": null },
+                    "3-5": { "ear": 3.5, "rda": 5.0, "ai": null, "ul": null },
+                    "6-7": { "ear": 4.5, "rda": 6.0, "ai": null, "ul": null },
+                    "8-9": { "ear": 6.0, "rda": 8.0, "ai": null, "ul": null },
+                    "10-11": { 
+                        "no_menstruation": { "ear": 6.5, "rda": 9.0 }, // デフォルトは月経なしの値を使用
+                        "with_menstruation": { "ear": 8.5, "rda": 12.5 },
+                        "rda": 9.0, // デフォルト値
+                        "ai": null, "ul": null 
+                    },
+                    "12-14": { 
+                        "no_menstruation": { "ear": 6.5, "rda": 8.0 },
+                        "with_menstruation": { "ear": 9.0, "rda": 12.5 },
+                        "rda": 8.0, // デフォルト値
+                        "ai": null, "ul": null 
+                    },
+                    "15-17": { 
+                        "no_menstruation": { "ear": 5.5, "rda": 6.5 },
+                        "with_menstruation": { "ear": 7.5, "rda": 11.0 },
+                        "rda": 6.5, // デフォルト値
+                        "ai": null, "ul": null 
+                    },
+                    "18-29": { 
+                        "no_menstruation": { "ear": 5.0, "rda": 6.0 },
+                        "with_menstruation": { "ear": 7.0, "rda": 10.0 },
+                        "rda": 6.0, // デフォルト値 (月経なしをデフォルトとする)
+                        "ai": null, "ul": null 
+                    },
+                    "30-49": { 
+                        "no_menstruation": { "ear": 5.0, "rda": 6.0 },
+                        "with_menstruation": { "ear": 7.5, "rda": 10.5 },
+                        "rda": 6.0, // デフォルト値
+                        "ai": null, "ul": null 
+                    },
+                    "50-64": { 
+                        "no_menstruation": { "ear": 5.0, "rda": 6.0 },
+                        "with_menstruation": { "ear": 7.5, "rda": 10.5 },
+                        "rda": 6.0, // デフォルト値
+                        "ai": null, "ul": null 
+                    },
+                    "65-74": { "ear": 5.0, "rda": 6.0, "ai": null, "ul": null },
+                    "75+": { "ear": 4.5, "rda": 5.5, "ai": null, "ul": null },
+                    "pregnancy_early": { "ear_add": 2.0, "rda_add": 2.5, "ai": null, "ul": null },
+                    "pregnancy_late": { "ear_add": 7.0, "rda_add": 8.5, "ai": null, "ul": null },
+                    "lactation": { "ear_add": 1.5, "rda_add": 2.0, "ai": null, "ul": null }
+                }
+            },
+
+            // 亜鉛の食事摂取基準 (mg/日)
+            "zinc": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 1.5, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 2.0, "ul": null },
+                    "1-2": { "ear": 2.5, "rda": 3.5, "ai": null, "ul": null },
+                    "3-5": { "ear": 3.0, "rda": 4.0, "ai": null, "ul": null },
+                    "6-7": { "ear": 3.5, "rda": 5.0, "ai": null, "ul": null },
+                    "8-9": { "ear": 4.0, "rda": 5.5, "ai": null, "ul": null },
+                    "10-11": { "ear": 5.5, "rda": 8.0, "ai": null, "ul": null },
+                    "12-14": { "ear": 7.0, "rda": 8.5, "ai": null, "ul": null },
+                    "15-17": { "ear": 8.5, "rda": 10.0, "ai": null, "ul": null },
+                    "18-29": { "ear": 7.5, "rda": 9.0, "ai": null, "ul": 40 },
+                    "30-49": { "ear": 8.0, "rda": 9.5, "ai": null, "ul": 45 },
+                    "50-64": { "ear": 8.0, "rda": 9.5, "ai": null, "ul": 45 },
+                    "65-74": { "ear": 7.5, "rda": 9.0, "ai": null, "ul": 45 },
+                    "75+": { "ear": 7.5, "rda": 9.0, "ai": null, "ul": 40 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 1.5, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 2.0, "ul": null },
+                    "1-2": { "ear": 2.0, "rda": 3.0, "ai": null, "ul": null },
+                    "3-5": { "ear": 2.5, "rda": 3.5, "ai": null, "ul": null },
+                    "6-7": { "ear": 3.0, "rda": 4.5, "ai": null, "ul": null },
+                    "8-9": { "ear": 4.0, "rda": 5.5, "ai": null, "ul": null },
+                    "10-11": { "ear": 5.5, "rda": 7.5, "ai": null, "ul": null },
+                    "12-14": { "ear": 6.5, "rda": 8.5, "ai": null, "ul": null },
+                    "15-17": { "ear": 6.0, "rda": 8.0, "ai": null, "ul": null },
+                    "18-29": { "ear": 6.0, "rda": 7.5, "ai": null, "ul": 35 },
+                    "30-49": { "ear": 6.5, "rda": 8.0, "ai": null, "ul": 35 },
+                    "50-64": { "ear": 6.5, "rda": 8.0, "ai": null, "ul": 35 },
+                    "65-74": { "ear": 6.5, "rda": 7.5, "ai": null, "ul": 35 },
+                    "75+": { "ear": 6.0, "rda": 7.0, "ai": null, "ul": 35 },
+                    "pregnancy_early": { "ear_add": 0.0, "rda_add": 0.0, "ai": null, "ul": null },
+                    "pregnancy_late": { "ear_add": 2.0, "rda_add": 2.0, "ai": null, "ul": null },
+                    "lactation": { "ear_add": 2.5, "rda_add": 3.0, "ai": null, "ul": null }
+                }
+            },
+
+            // 銅の食事摂取基準 (mg/日)
+            "copper": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.3, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.4, "ul": null },
+                    "1-2": { "ear": 0.3, "rda": 0.3, "ai": null, "ul": null },
+                    "3-5": { "ear": 0.3, "rda": 0.4, "ai": null, "ul": null },
+                    "6-7": { "ear": 0.4, "rda": 0.4, "ai": null, "ul": null },
+                    "8-9": { "ear": 0.4, "rda": 0.5, "ai": null, "ul": null },
+                    "10-11": { "ear": 0.5, "rda": 0.6, "ai": null, "ul": null },
+                    "12-14": { "ear": 0.7, "rda": 0.8, "ai": null, "ul": null },
+                    "15-17": { "ear": 0.8, "rda": 0.9, "ai": null, "ul": null },
+                    "18-29": { "ear": 0.7, "rda": 0.8, "ai": null, "ul": 7 },
+                    "30-49": { "ear": 0.8, "rda": 0.9, "ai": null, "ul": 7 },
+                    "50-64": { "ear": 0.7, "rda": 0.9, "ai": null, "ul": 7 },
+                    "65-74": { "ear": 0.7, "rda": 0.8, "ai": null, "ul": 7 },
+                    "75+": { "ear": 0.7, "rda": 0.8, "ai": null, "ul": 7 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 0.3, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 0.4, "ul": null },
+                    "1-2": { "ear": 0.2, "rda": 0.3, "ai": null, "ul": null },
+                    "3-5": { "ear": 0.3, "rda": 0.3, "ai": null, "ul": null },
+                    "6-7": { "ear": 0.4, "rda": 0.4, "ai": null, "ul": null },
+                    "8-9": { "ear": 0.4, "rda": 0.5, "ai": null, "ul": null },
+                    "10-11": { "ear": 0.5, "rda": 0.6, "ai": null, "ul": null },
+                    "12-14": { "ear": 0.6, "rda": 0.8, "ai": null, "ul": null },
+                    "15-17": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": null },
+                    "18-29": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 7 },
+                    "30-49": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 7 },
+                    "50-64": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 7 },
+                    "65-74": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 7 },
+                    "75+": { "ear": 0.6, "rda": 0.7, "ai": null, "ul": 7 },
+                    "pregnancy_add": { "ear_add": 0.1, "rda_add": 0.1, "ai": null, "ul": null },
+                    "lactation_add": { "ear_add": 0.5, "rda_add": 0.6, "ai": null, "ul": null }
+                }
+            },
+
+            // マンガンの食事摂取基準 (mg/日)
+            "manganese": {
+                "male": {
+                    "0-5m": { "ai": 0.01, "ul": null },
+                    "6-11m": { "ai": 0.5, "ul": null },
+                    "1-2": { "ai": 1.5, "ul": null },
+                    "3-5": { "ai": 2.0, "ul": null },
+                    "6-7": { "ai": 2.0, "ul": null },
+                    "8-9": { "ai": 2.5, "ul": null },
+                    "10-11": { "ai": 3.0, "ul": null },
+                    "12-14": { "ai": 3.5, "ul": null },
+                    "15-17": { "ai": 3.5, "ul": null },
+                    "18-29": { "ai": 3.5, "ul": 11 },
+                    "30-49": { "ai": 3.5, "ul": 11 },
+                    "50-64": { "ai": 3.5, "ul": 11 },
+                    "65-74": { "ai": 3.5, "ul": 11 },
+                    "75+": { "ai": 3.5, "ul": 11 }
+                },
+                "female": {
+                    "0-5m": { "ai": 0.01, "ul": null },
+                    "6-11m": { "ai": 0.5, "ul": null },
+                    "1-2": { "ai": 1.5, "ul": null },
+                    "3-5": { "ai": 2.0, "ul": null },
+                    "6-7": { "ai": 2.0, "ul": null },
+                    "8-9": { "ai": 2.5, "ul": null },
+                    "10-11": { "ai": 3.0, "ul": null },
+                    "12-14": { "ai": 3.0, "ul": null },
+                    "15-17": { "ai": 3.0, "ul": null },
+                    "18-29": { "ai": 3.0, "ul": 11 },
+                    "30-49": { "ai": 3.0, "ul": 11 },
+                    "50-64": { "ai": 3.0, "ul": 11 },
+                    "65-74": { "ai": 3.0, "ul": 11 },
+                    "75+": { "ai": 3.0, "ul": 11 },
+                    "pregnancy": { "ai": 3.0, "ul": null },
+                    "lactation": { "ai": 3.0, "ul": null }
+                }
+            },
+
+            // ヨウ素の食事摂取基準 (μg/日)
+            "iodine": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 100, "ul": 250 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 130, "ul": 350 },
+                    "1-2": { "ear": 35, "rda": 50, "ai": null, "ul": 600 },
+                    "3-5": { "ear": 40, "rda": 60, "ai": null, "ul": 900 },
+                    "6-7": { "ear": 55, "rda": 75, "ai": null, "ul": 1200 },
+                    "8-9": { "ear": 65, "rda": 90, "ai": null, "ul": 1500 },
+                    "10-11": { "ear": 75, "rda": 110, "ai": null, "ul": 2000 },
+                    "12-14": { "ear": 100, "rda": 140, "ai": null, "ul": 2500 },
+                    "15-17": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "18-29": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "30-49": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "50-64": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "65-74": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "75+": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 100, "ul": 250 },
+                    "6-11m": { "ear": null, "rda": null, "ai": 130, "ul": 350 },
+                    "1-2": { "ear": 35, "rda": 50, "ai": null, "ul": 600 },
+                    "3-5": { "ear": 40, "rda": 60, "ai": null, "ul": 900 },
+                    "6-7": { "ear": 55, "rda": 75, "ai": null, "ul": 1200 },
+                    "8-9": { "ear": 65, "rda": 90, "ai": null, "ul": 1500 },
+                    "10-11": { "ear": 75, "rda": 110, "ai": null, "ul": 2000 },
+                    "12-14": { "ear": 100, "rda": 140, "ai": null, "ul": 2500 },
+                    "15-17": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "18-29": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "30-49": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "50-64": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "65-74": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "75+": { "ear": 100, "rda": 140, "ai": null, "ul": 3000 },
+                    "pregnancy_early": { "ear_add": 75, "rda_add": 110, "ai": null, "ul": 2000 },
+                    "pregnancy_mid": { "ear_add": 75, "rda_add": 110, "ai": null, "ul": 2000 },
+                    "pregnancy_late": { "ear_add": 75, "rda_add": 110, "ai": null, "ul": 2000 },
+                    "lactation": { "ear_add": 100, "rda_add": 140, "ai": null, "ul": 2000 }
+                }
+            },
+
+            // セレンの食事摂取基準 (μg/日)
+            "selenium": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 15, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 15, "ul": null },
+                    "1-2": { "ear": 10, "rda": 10, "ai": null, "ul": 100 },
+                    "3-5": { "ear": 10, "rda": 15, "ai": null, "ul": 100 },
+                    "6-7": { "ear": 15, "rda": 15, "ai": null, "ul": 150 },
+                    "8-9": { "ear": 15, "rda": 20, "ai": null, "ul": 200 },
+                    "10-11": { "ear": 20, "rda": 25, "ai": null, "ul": 250 },
+                    "12-14": { "ear": 25, "rda": 30, "ai": null, "ul": 350 },
+                    "15-17": { "ear": 30, "rda": 35, "ai": null, "ul": 400 },
+                    "18-29": { "ear": 25, "rda": 30, "ai": null, "ul": 400 },
+                    "30-49": { "ear": 25, "rda": 35, "ai": null, "ul": 450 },
+                    "50-64": { "ear": 25, "rda": 30, "ai": null, "ul": 450 },
+                    "65-74": { "ear": 25, "rda": 30, "ai": null, "ul": 450 },
+                    "75+": { "ear": 25, "rda": 30, "ai": null, "ul": 400 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 15, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 15, "ul": null },
+                    "1-2": { "ear": 10, "rda": 10, "ai": null, "ul": 100 },
+                    "3-5": { "ear": 10, "rda": 10, "ai": null, "ul": 100 },
+                    "6-7": { "ear": 15, "rda": 15, "ai": null, "ul": 150 },
+                    "8-9": { "ear": 15, "rda": 20, "ai": null, "ul": 200 },
+                    "10-11": { "ear": 20, "rda": 25, "ai": null, "ul": 250 },
+                    "12-14": { "ear": 25, "rda": 30, "ai": null, "ul": 300 },
+                    "15-17": { "ear": 20, "rda": 25, "ai": null, "ul": 350 },
+                    "18-29": { "ear": 20, "rda": 25, "ai": null, "ul": 350 },
+                    "30-49": { "ear": 20, "rda": 25, "ai": null, "ul": 350 },
+                    "50-64": { "ear": 20, "rda": 25, "ai": null, "ul": 350 },
+                    "65-74": { "ear": 20, "rda": 25, "ai": null, "ul": 350 },
+                    "75+": { "ear": 20, "rda": 25, "ai": null, "ul": 350 },
+                    "pregnancy_early": { "ear_add": 5, "rda_add": 5, "ai": null, "ul": null },
+                    "pregnancy_mid": { "ear_add": 5, "rda_add": 5, "ai": null, "ul": null },
+                    "pregnancy_late": { "ear_add": 5, "rda_add": 5, "ai": null, "ul": null },
+                    "lactation": { "ear_add": 15, "rda_add": 20, "ai": null, "ul": null }
+                }
+            },
+
+            // クロムの食事摂取基準 (μg/日)
+            "chromium": {
+                "male": {
+                    "0-5m": { "ai": 0.8, "ul": null },
+                    "6-11m": { "ai": 1.0, "ul": null },
+                    "1-2": { "ai": null, "ul": null }, // データ不足のため基準値なし
+                    "3-5": { "ai": null, "ul": null },
+                    "6-7": { "ai": null, "ul": null },
+                    "8-9": { "ai": null, "ul": null },
+                    "10-11": { "ai": null, "ul": null },
+                    "12-14": { "ai": null, "ul": null },
+                    "15-17": { "ai": null, "ul": null },
+                    "18-29": { "ai": 10, "ul": 500 },
+                    "30-49": { "ai": 10, "ul": 500 },
+                    "50-64": { "ai": 10, "ul": 500 },
+                    "65-74": { "ai": 10, "ul": 500 },
+                    "75+": { "ai": 10, "ul": 500 }
+                },
+                "female": {
+                    "0-5m": { "ai": 0.8, "ul": null },
+                    "6-11m": { "ai": 1.0, "ul": null },
+                    "1-2": { "ai": null, "ul": null },
+                    "3-5": { "ai": null, "ul": null },
+                    "6-7": { "ai": null, "ul": null },
+                    "8-9": { "ai": null, "ul": null },
+                    "10-11": { "ai": null, "ul": null },
+                    "12-14": { "ai": null, "ul": null },
+                    "15-17": { "ai": null, "ul": null },
+                    "18-29": { "ai": 10, "ul": 500 },
+                    "30-49": { "ai": 10, "ul": 500 },
+                    "50-64": { "ai": 10, "ul": 500 },
+                    "65-74": { "ai": 10, "ul": 500 },
+                    "75+": { "ai": 10, "ul": 500 },
+                    "pregnancy": { "ai": 10, "ul": null },
+                    "lactation": { "ai": 10, "ul": null }
+                }
+            },
+
+            // モリブデンの食事摂取基準 (μg/日)
+            "molybdenum": {
+                "male": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 2.5, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 3.0, "ul": null },
+                    "1-2": { "ear": 10, "rda": 10, "ai": null, "ul": null },
+                    "3-5": { "ear": 10, "rda": 10, "ai": null, "ul": null },
+                    "6-7": { "ear": 10, "rda": 15, "ai": null, "ul": null },
+                    "8-9": { "ear": 15, "rda": 20, "ai": null, "ul": null },
+                    "10-11": { "ear": 15, "rda": 20, "ai": null, "ul": null },
+                    "12-14": { "ear": 20, "rda": 25, "ai": null, "ul": null },
+                    "15-17": { "ear": 25, "rda": 30, "ai": null, "ul": null },
+                    "18-29": { "ear": 20, "rda": 30, "ai": null, "ul": 600 },
+                    "30-49": { "ear": 25, "rda": 30, "ai": null, "ul": 600 },
+                    "50-64": { "ear": 25, "rda": 30, "ai": null, "ul": 600 },
+                    "65-74": { "ear": 20, "rda": 30, "ai": null, "ul": 600 },
+                    "75+": { "ear": 20, "rda": 25, "ai": null, "ul": 600 }
+                },
+                "female": {
+                    "0-5m": { "ear": null, "rda": null, "ai": 2.5, "ul": null },
+                    "6-11m": { "ear": null, "rda": null, "ai": 3.0, "ul": null },
+                    "1-2": { "ear": 10, "rda": 10, "ai": null, "ul": null },
+                    "3-5": { "ear": 10, "rda": 10, "ai": null, "ul": null },
+                    "6-7": { "ear": 10, "rda": 15, "ai": null, "ul": null },
+                    "8-9": { "ear": 15, "rda": 15, "ai": null, "ul": null },
+                    "10-11": { "ear": 15, "rda": 20, "ai": null, "ul": null },
+                    "12-14": { "ear": 20, "rda": 25, "ai": null, "ul": null },
+                    "15-17": { "ear": 20, "rda": 25, "ai": null, "ul": null },
+                    "18-29": { "ear": 20, "rda": 25, "ai": null, "ul": 500 },
+                    "30-49": { "ear": 20, "rda": 25, "ai": null, "ul": 500 },
+                    "50-64": { "ear": 20, "rda": 25, "ai": null, "ul": 500 },
+                    "65-74": { "ear": 20, "rda": 25, "ai": null, "ul": 500 },
+                    "75+": { "ear": 20, "rda": 25, "ai": null, "ul": 500 },
+                    "pregnancy_early": { "ear_add": 0, "rda_add": 0, "ai": null, "ul": null },
+                    "pregnancy_mid": { "ear_add": 0, "rda_add": 0, "ai": null, "ul": null },
+                    "pregnancy_late": { "ear_add": 0, "rda_add": 0, "ai": null, "ul": null },
+                    "lactation": { "ear_add": 2.5, "rda_add": 3.5, "ai": null, "ul": null }
+                }
+            }
+        };
+        
+        // ユーザーの栄養基準値を保存するオブジェクト
+        let userNutritionStandards = {}; // この変数は現状直接使われていませんが、将来的な拡張のために残すことも考えられます。
+        let currentTotalCalories = 0; // 現在の総摂取カロリーを保持するグローバル変数
+
+        // 栄養素データ
+        const nutritionData = {
+            "完全メシ（汁なしカップヌードル）": {
+                "熱量": "448kcal", "たんぱく質": "17.6g", "脂質": "15.0g", "飽和脂肪酸": "2.5g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "4.1g", "炭水化物": "65.7g", "糖質": "55.7g", "食物繊維": "10.0g", "食塩相当量": "3.5g", "亜鉛": "3.6mg", "カリウム": "874mg", "カルシウム": "347mg", "クロム": "6μg", "セレン": "12μg", "鉄": "3.9mg", "銅": "0.2mg", "マグネシウム": "114mg", "マンガン": "1.2mg", "モリブデン": "15μg", "ヨウ素": "54μg", "リン": "360mg", "ナイアシン": "7mg", "パントテン酸": "2.3mg", "ビオチン": "18μg", "ビタミンA": "322μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.7mg", "ビタミンB6": "2.9mg", "ビタミンB12": "1.0μg", "ビタミンC": "37mg", "ビタミンD": "10.8μg", "ビタミンE": "5.5mg", "ビタミンK": "56μg", "葉酸": "84μg"
+            },
+            "完全メシ（汁なしシーフードヌードル）": {
+                "熱量": "447kcal", "たんぱく質": "17.7g", "脂質": "14.5g", "飽和脂肪酸": "1.9g", "n-3系脂肪酸": "0.9g", "n-6系脂肪酸": "3.4g", "炭水化物": "66.0g", "糖質": "56.2g", "食物繊維": "9.8g", "食塩相当量": "3.1g", "亜鉛": "3.5mg", "カリウム": "869mg", "カルシウム": "363mg", "クロム": "4μg", "セレン": "12μg", "鉄": "3.9mg", "銅": "0.4mg", "マグネシウム": "113mg", "マンガン": "1.5mg", "モリブデン": "12μg", "ヨウ素": "52μg", "リン": "344mg", "ナイアシン": "7mg", "パントテン酸": "2.3mg", "ビオチン": "23μg", "ビタミンA": "310μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.7mg", "ビタミンB6": "2.9mg", "ビタミンB12": "1.0μg", "ビタミンC": "39mg", "ビタミンD": "10.5μg", "ビタミンE": "5.3mg", "ビタミンK": "74μg", "葉酸": "82μg"
+            },
+            "完全メシ（焼そばU.F.O.）": {
+                "熱量": "459kcal", "たんぱく質": "17.9g", "脂質": "14.0g", "飽和脂肪酸": "1.8g", "n-3系脂肪酸": "1.1g", "n-6系脂肪酸": "3.7g", "炭水化物": "71.0g", "糖質": "61.2g", "食物繊維": "9.8g", "食塩相当量": "3.6g", "亜鉛": "3.5mg", "カリウム": "924mg", "カルシウム": "261mg", "クロム": "6μg", "セレン": "11μg", "鉄": "3.3mg", "銅": "0.2mg", "マグネシウム": "115mg", "マンガン": "1.2mg", "モリブデン": "16μg", "ヨウ素": "43μg", "リン": "349mg", "ナイアシン": "7mg", "パントテン酸": "2.4mg", "ビオチン": "18μg", "ビタミンA": "331μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.7mg", "ビタミンB6": "2.9mg", "ビタミンB12": "0.9μg", "ビタミンC": "37mg", "ビタミンD": "11.6μg", "ビタミンE": "5.0mg", "ビタミンK": "73μg", "葉酸": "89μg"
+            },
+            "完全メシ（カレーメシ 欧風カレー）": {
+                "熱量": "483kcal", "たんぱく質": "20.0g", "脂質": "15.0g", "飽和脂肪酸": "2.6g", "n-3系脂肪酸": "1.0g", "n-6系脂肪酸": "3.7g", "炭水化物": "70.7g", "糖質": "62.8g", "食物繊維": "7.9g", "食塩相当量": "2.9g", "亜鉛": "3.8mg", "カリウム": "872mg", "カルシウム": "285mg", "クロム": "8μg", "セレン": "14μg", "鉄": "3.7mg", "銅": "0.6mg", "マグネシウム": "180mg", "マンガン": "1.5mg", "モリブデン": "50μg", "ヨウ素": "70μg", "リン": "333mg", "ナイアシン": "9mg", "パントテン酸": "4.3mg", "ビオチン": "32μg", "ビタミンA": "311μg", "ビタミンB1": "1.3mg", "ビタミンB2": "1.4mg", "ビタミンB6": "5.3mg", "ビタミンB12": "1.6μg", "ビタミンC": "38mg", "ビタミンD": "10.5μg", "ビタミンE": "8.3mg", "ビタミンK": "58μg", "葉酸": "88μg"
+            },
+            "完全メシ（ハヤシメシ デミグラス）": {
+                "熱量": "472kcal", "たんぱく質": "20.6g", "脂質": "13.0g", "飽和脂肪酸": "2.3g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "4.7g", "炭水化物": "72.2g", "糖質": "64.5g", "食物繊維": "7.7g", "食塩相当量": "2.9g", "亜鉛": "5.0mg", "カリウム": "790mg", "カルシウム": "268mg", "クロム": "6μg", "セレン": "22μg", "鉄": "3.9mg", "銅": "0.7mg", "マグネシウム": "173mg", "マンガン": "1.5mg", "モリブデン": "48μg", "ヨウ素": "62μg", "リン": "336mg", "ナイアシン": "10mg", "パントテン酸": "3.3mg", "ビオチン": "29μg", "ビタミンA": "299μg", "ビタミンB1": "1.2mg", "ビタミンB2": "0.8mg", "ビタミンB6": "6.7mg", "ビタミンB12": "1.7μg", "ビタミンC": "37mg", "ビタミンD": "9.8μg", "ビタミンE": "7.2mg", "ビタミンK": "61μg", "葉酸": "115μg"
+            },
+            "冷凍 完全メシ DELI やわらかロースかつ丼": {
+                "熱量": "598kcal", "たんぱく質": "24.6g", "脂質": "14.9g", "飽和脂肪酸": "3.4g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "4.0g", "炭水化物": "91.4g", "糖質": "83.8g", "食物繊維": "7.6g", "食塩相当量": "2.8g", "亜鉛": "4.7mg", "カリウム": "913mg", "カルシウム": "300mg", "クロム": "8μg", "セレン": "30μg", "鉄": "4.0mg", "銅": "0.3mg", "マグネシウム": "134mg", "マンガン": "1.6mg", "モリブデン": "79μg", "ヨウ素": "80μg", "リン": "445mg", "ナイアシン": "15mg", "パントテン酸": "2.9mg", "ビオチン": "22μg", "ビタミンA": "497μg", "ビタミンB1": "1.5mg", "ビタミンB2": "0.8mg", "ビタミンB6": "1.4mg", "ビタミンB12": "2.1μg", "ビタミンC": "55mg", "ビタミンD": "7.6μg", "ビタミンE": "7.3mg", "ビタミンK": "58μg", "葉酸": "133μg"
+            },
+            "冷凍 完全メシ DELI コク深い味わいの極旨ビーフカレー": {
+                "熱量": "552kcal", "たんぱく質": "21.8g", "脂質": "14.1g", "飽和脂肪酸": "3.6g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "3.7g", "炭水化物": "86.4g", "糖質": "79.1g", "食物繊維": "7.3g", "食塩相当量": "2.4g", "亜鉛": "4.3mg", "カリウム": "850mg", "カルシウム": "381mg", "クロム": "7μg", "セレン": "11μg", "鉄": "4.1mg", "銅": "0.4mg", "マグネシウム": "129mg", "マンガン": "1.6mg", "モリブデン": "76μg", "ヨウ素": "49μg", "リン": "335mg", "ナイアシン": "8mg", "パントテン酸": "2.5mg", "ビオチン": "20μg", "ビタミンA": "493μg", "ビタミンB1": "0.6mg", "ビタミンB2": "0.7mg", "ビタミンB6": "1.1mg", "ビタミンB12": "2.0μg", "ビタミンC": "56mg", "ビタミンD": "6.2μg", "ビタミンE": "3.4mg", "ビタミンK": "59μg", "葉酸": "108μg"
+            },
+            "冷凍 完全メシ DELI タイ風ガパオライス": {
+                "熱量": "521kcal", "たんぱく質": "21.3g", "脂質": "12.7g", "飽和脂肪酸": "1.7g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "3.8g", "炭水化物": "79.7g", "糖質": "71.9g", "食物繊維": "7.8g", "食塩相当量": "1.7g", "亜鉛": "4.2mg", "カリウム": "853mg", "カルシウム": "264mg", "クロム": "7μg", "セレン": "23μg", "鉄": "3.5mg", "銅": "0.4mg", "マグネシウム": "126mg", "マンガン": "1.7mg", "モリブデン": "90μg", "ヨウ素": "43μg", "リン": "345mg", "ナイアシン": "14mg", "パントテン酸": "3.1mg", "ビオチン": "22μg", "ビタミンA": "435μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.8mg", "ビタミンB6": "1.4mg", "ビタミンB12": "2.2μg", "ビタミンC": "62mg", "ビタミンD": "6.2μg", "ビタミンE": "4.5mg", "ビタミンK": "78μg", "葉酸": "140μg"
+            },
+            "4種の魚介が決め手の濃厚つけ麺(1食 318g 当たり)": {
+                "熱量": "540kcal", "たんぱく質": "21.3g", "脂質": "13.8g", "飽和脂肪酸": "3.2g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "4.2g", "炭水化物": "85.6g", "糖質": "78.1g", "食物繊維": "7.5g", "食塩相当量": "2.7g", "亜鉛": "3.7mg", "カリウム": "1016mg", "カルシウム": "326mg", "クロム": "5μg", "セレン": "32μg", "鉄": "4.0mg", "銅": "0.4mg", "マグネシウム": "135mg", "マンガン": "1.5mg", "モリブデン": "16μg", "ヨウ素": "51μg", "リン": "331mg", "ナイアシン": "12mg", "パントテン酸": "2.3mg", "ビオチン": "20μg", "ビタミンA": "472μg", "ビタミンB1": "0.6mg", "ビタミンB2": "0.7mg", "ビタミンB6": "1.2mg", "ビタミンB12": "3.6μg", "ビタミンC": "52mg", "ビタミンD": "8.3μg", "ビタミンE": "4.1mg", "ビタミンK": "63μg", "葉酸": "108μg"
+            },
+            "旨辛ビビンバ(1食 331g 当たり)": {
+                "熱量": "590kcal", "たんぱく質": "23.3g", "脂質": "16.9g", "飽和脂肪酸": "2.8g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "4.1g", "炭水化物": "85.8g", "糖質": "78.1g", "食物繊維": "7.7g", "食塩相当量": "2.7g", "亜鉛": "5.1mg", "カリウム": "898mg", "カルシウム": "361mg", "クロム": "7μg", "セレン": "13μg", "鉄": "4.6mg", "銅": "0.5mg", "マグネシウム": "137mg", "マンガン": "1.9mg", "モリブデン": "110μg", "ヨウ素": "47μg", "リン": "362mg", "ナイアシン": "8mg", "パントテン酸": "2.8mg", "ビオチン": "23μg", "ビタミンA": "507μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.8mg", "ビタミンB6": "1.0mg", "ビタミンB12": "2.4μg", "ビタミンC": "55mg", "ビタミンD": "4.8μg", "ビタミンE": "4.0mg", "ビタミンK": "134μg", "葉酸": "132μg"
+            },
+            "デミソースのふんわりオムライス(1食 385g 当たり)": {
+                "熱量": "582kcal", "たんぱく質": "23.2g", "脂質": "16.9g", "飽和脂肪酸": "3.4g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "3.9g", "炭水化物": "87.1g", "糖質": "79.6g", "食物繊維": "7.5g", "食塩相当量": "2.5g", "亜鉛": "4.7mg", "カリウム": "888mg", "カルシウム": "286mg", "クロム": "10μg", "セレン": "23μg", "鉄": "4.0mg", "銅": "0.4mg", "マグネシウム": "134mg", "マンガン": "1.6mg", "モリブデン": "65μg", "ヨウ素": "59μg", "リン": "368mg", "ナイアシン": "14mg", "パントテン酸": "3.3mg", "ビオチン": "26μg", "ビタミンA": "486μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.8mg", "ビタミンB6": "1.3mg", "ビタミンB12": "2.2μg", "ビタミンC": "54mg", "ビタミンD": "6.2μg", "ビタミンE": "4.3mg", "ビタミンK": "72μg", "葉酸": "104μg"
+            },
+            "ナポリ風ベーコン入りミックスピザ(1食 223g 当たり)": {
+                "熱量": "511kcal", "たんぱく質": "20.3g", "脂質": "14.9g", "飽和脂肪酸": "3.3g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "5.8g", "炭水化物": "73.3g", "糖質": "66.7g", "食物繊維": "6.6g", "食塩相当量": "2.4g", "亜鉛": "3.6mg", "カリウム": "1004mg", "カルシウム": "378mg", "クロム": "6μg", "セレン": "50μg", "鉄": "3.3mg", "銅": "0.3mg", "マグネシウム": "120mg", "マンガン": "1.3mg", "モリブデン": "27μg", "ヨウ素": "45μg", "リン": "373mg", "ナイアシン": "15mg", "パントテン酸": "3.9mg", "ビオチン": "19μg", "ビタミンA": "406μg", "ビタミンB1": "1.3mg", "ビタミンB2": "0.8mg", "ビタミンB6": "6.8mg", "ビタミンB12": "2.0μg", "ビタミンC": "51mg", "ビタミンD": "11.9μg", "ビタミンE": "6.5mg", "ビタミンK": "69μg", "葉酸": "176μg"
+            },
+            "黒胡椒がきいた炙り焼豚炒飯(1食 290g 当たり)": {
+                "熱量": "576kcal", "たんぱく質": "26.5g", "脂質": "17.9g", "飽和脂肪酸": "3.5g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "4.0g", "炭水化物": "75.8g", "糖質": "67.9g", "食物繊維": "7.9g", "食塩相当量": "2.8g", "亜鉛": "4.0mg", "カリウム": "1253mg", "カルシウム": "298mg", "クロム": "4μg", "セレン": "25μg", "鉄": "3.9mg", "銅": "0.4mg", "マグネシウム": "133mg", "マンガン": "1.6mg", "モリブデン": "111μg", "ヨウ素": "65μg", "リン": "375mg", "ナイアシン": "11mg", "パントテン酸": "2.3mg", "ビオチン": "36μg", "ビタミンA": "480μg", "ビタミンB1": "0.6mg", "ビタミンB2": "1.0mg", "ビタミンB6": "1.2mg", "ビタミンB12": "1.7μg", "ビタミンC": "60mg", "ビタミンD": "8.2μg", "ビタミンE": "5.7mg", "ビタミンK": "78μg", "葉酸": "168μg"
+            },
+            "濃厚白湯スープのちゃんぽん(1食 308g 当たり)": {
+                "熱量": "458kcal", "たんぱく質": "20.6g", "脂質": "12.2g", "飽和脂肪酸": "3.6g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "3.7g", "炭水化物": "70.1g", "糖質": "63.3g", "食物繊維": "6.8g", "食塩相当量": "2.9g", "亜鉛": "3.3mg", "カリウム": "696mg", "カルシウム": "330mg", "クロム": "32μg", "セレン": "47μg", "鉄": "3.4mg", "銅": "0.3mg", "マグネシウム": "103mg", "マンガン": "1.4mg", "モリブデン": "57μg", "ヨウ素": "351μg", "リン": "280mg", "ナイアシン": "9mg", "パントテン酸": "2.2mg", "ビオチン": "34μg", "ビタミンA": "368μg", "ビタミンB1": "0.5mg", "ビタミンB2": "0.9mg", "ビタミンB6": "0.8mg", "ビタミンB12": "3.0μg", "ビタミンC": "58mg", "ビタミンD": "5.1μg", "ビタミンE": "3.3mg", "ビタミンK": "82μg", "葉酸": "137μg"
+            },
+            "和風だしがきいた牛カレーうどん(1食 328g 当たり)": {
+                "熱量": "502kcal", "たんぱく質": "19.8g", "脂質": "13.4g", "飽和脂肪酸": "3.8g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "3.5g", "炭水化物": "78.8g", "糖質": "70.9g", "食物繊維": "7.9g", "食塩相当量": "2.9g", "亜鉛": "4.4mg", "カリウム": "798mg", "カルシウム": "328mg", "クロム": "33μg", "セレン": "36μg", "鉄": "4.6mg", "銅": "0.5mg", "マグネシウム": "140mg", "マンガン": "1.4mg", "モリブデン": "42μg", "ヨウ素": "312μg", "リン": "368mg", "ナイアシン": "9mg", "パントテン酸": "2.6mg", "ビオチン": "47μg", "ビタミンA": "425μg", "ビタミンB1": "0.7mg", "ビタミンB2": "1.3mg", "ビタミンB6": "1.1mg", "ビタミンB12": "3.9μg", "ビタミンC": "77mg", "ビタミンD": "6.9μg", "ビタミンE": "3.9mg", "ビタミンK": "108μg", "葉酸": "160μg"
+            },
+            "濃厚芝麻醤味の汁なし担々麺(1食 305g 当たり)": {
+                "熱量": "482kcal", "たんぱく質": "22.1g", "脂質": "13.9g", "飽和脂肪酸": "2.8g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "4.2g", "炭水化物": "70.8g", "糖質": "64.6g", "食物繊維": "6.2g", "食塩相当量": "2.9g", "亜鉛": "3.3mg", "カリウム": "751mg", "カルシウム": "347mg", "クロム": "4μg", "セレン": "22μg", "鉄": "3.6mg", "銅": "0.3mg", "マグネシウム": "113mg", "マンガン": "1.5mg", "モリブデン": "30μg", "ヨウ素": "83μg", "リン": "305mg", "ナイアシン": "13mg", "パントテン酸": "3.3mg", "ビオチン": "18μg", "ビタミンA": "415μg", "ビタミンB1": "1.2mg", "ビタミンB2": "0.7mg", "ビタミンB6": "7.4mg", "ビタミンB12": "1.8μg", "ビタミンC": "36mg", "ビタミンD": "13.0μg", "ビタミンE": "3.7mg", "ビタミンK": "82μg", "葉酸": "144μg"
+            },
+            "じっくり煮込んだボロネーゼ(1食 317g 当たり)": {
+                "熱量": "515kcal", "たんぱく質": "20.8g", "脂質": "13.7g", "飽和脂肪酸": "2.5g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "3.5g", "炭水化物": "73.6g", "糖質": "66.9g", "食物繊維": "6.7g", "食塩相当量": "2.8g", "亜鉛": "3.4mg", "カリウム": "846mg", "カルシウム": "376mg", "クロム": "3μg", "セレン": "61μg", "鉄": "3.3mg", "銅": "0.4mg", "マグネシウム": "131mg", "マンガン": "1.2mg", "モリブデン": "50μg", "ヨウ素": "42μg", "リン": "354mg", "ナイアシン": "16mg", "パントテン酸": "3.7mg", "ビオチン": "32μg", "ビタミンA": "379μg", "ビタミンB1": "1.2mg", "ビタミンB2": "0.7mg", "ビタミンB6": "6.8mg", "ビタミンB12": "1.8μg", "ビタミンC": "62mg", "ビタミンD": "11.6μg", "ビタミンE": "5.9mg", "ビタミンK": "81μg", "葉酸": "132μg"
+            },
+            "ミラノ風チキンドリア(1食 390g 当たり)": {
+                "熱量": "552kcal", "たんぱく質": "24.2g", "脂質": "14.6g", "飽和脂肪酸": "3.2g", "n-3系脂肪酸": "1.2g", "n-6系脂肪酸": "5.1g", "炭水化物": "81.1g", "糖質": "73.4g", "食物繊維": "7.7g", "食塩相当量": "2.7g", "亜鉛": "5.5mg", "カリウム": "1016mg", "カルシウム": "311mg", "クロム": "3μg", "セレン": "25μg", "鉄": "3.5mg", "銅": "0.3mg", "マグネシウム": "128mg", "マンガン": "1.5mg", "モリブデン": "65μg", "ヨウ素": "83μg", "リン": "394mg", "ナイアシン": "13mg", "パントテン酸": "3.1mg", "ビオチン": "34μg", "ビタミンA": "461μg", "ビタミンB1": "0.6mg", "ビタミンB2": "1.2mg", "ビタミンB6": "1.3mg", "ビタミンB12": "2.3μg", "ビタミンC": "56mg", "ビタミンD": "6.3μg", "ビタミンE": "5.1mg", "ビタミンK": "88μg", "葉酸": "116μg"
+            },
+            "喫茶風ナポリタン(1食 309g 当たり)": {
+                "熱量": "543kcal", "たんぱく質": "21.7g", "脂質": "15.4g", "飽和脂肪酸": "3.2g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "3.6g", "炭水化物": "79.0g", "糖質": "71.9g", "食物繊維": "7.1g", "食塩相当量": "2.3g", "亜鉛": "4.0mg", "カリウム": "907mg", "カルシウム": "393mg", "クロム": "4μg", "セレン": "53μg", "鉄": "3.8mg", "銅": "0.3mg", "マグネシウム": "135mg", "マンガン": "1.4mg", "モリブデン": "46μg", "ヨウ素": "47μg", "リン": "368mg", "ナイアシン": "17mg", "パントテン酸": "4.0mg", "ビオチン": "33μg", "ビタミンA": "466μg", "ビタミンB1": "1.4mg", "ビタミンB2": "0.8mg", "ビタミンB6": "8.8mg", "ビタミンB12": "2.4μg", "ビタミンC": "68mg", "ビタミンD": "16.0μg", "ビタミンE": "6.5mg", "ビタミンK": "99μg", "葉酸": "142μg"
+            },
+            "特製ミックス玉 お好み焼(1食 301g 当たり)": {
+                "熱量": "453kcal", "たんぱく質": "21.9g", "脂質": "14.9g", "飽和脂肪酸": "3.4g", "n-3系脂肪酸": "0.6g", "n-6系脂肪酸": "3.6g", "炭水化物": "57.8g", "糖質": "51.4g", "食物繊維": "6.4g", "食塩相当量": "2.9g", "亜鉛": "4.3mg", "カリウム": "952mg", "カルシウム": "252mg", "クロム": "6μg", "セレン": "40μg", "鉄": "4.5mg", "銅": "0.3mg", "マグネシウム": "127mg", "マンガン": "1.5mg", "モリブデン": "14μg", "ヨウ素": "107μg", "リン": "327mg", "ナイアシン": "14mg", "パントテン酸": "3.7mg", "ビオチン": "21μg", "ビタミンA": "398μg", "ビタミンB1": "1.1mg", "ビタミンB2": "0.8mg", "ビタミンB6": "6.3mg", "ビタミンB12": "2.7μg", "ビタミンC": "81mg", "ビタミンD": "11.7μg", "ビタミンE": "4.8mg", "ビタミンK": "168μg", "葉酸": "216μg"
+            },
+            "四川風麻婆丼(1食 340g 当たり)": {
+                "熱量": "553kcal", "たんぱく質": "22.4g", "脂質": "16.9g", "飽和脂肪酸": "3.5g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "6.1g", "炭水化物": "76.8g", "糖質": "69.6g", "食物繊維": "7.2g", "食塩相当量": "2.3g", "亜鉛": "4.7mg", "カリウム": "880mg", "カルシウム": "381mg", "クロム": "5μg", "セレン": "17μg", "鉄": "4.0mg", "銅": "0.4mg", "マグネシウム": "126mg", "マンガン": "1.7mg", "モリブデン": "105μg", "ヨウ素": "93μg", "リン": "349mg", "ナイアシン": "9mg", "パントテン酸": "2.2mg", "ビオチン": "33μg", "ビタミンA": "428μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.9mg", "ビタミンB6": "1.2mg", "ビタミンB12": "1.6μg", "ビタミンC": "55mg", "ビタミンD": "6.5μg", "ビタミンE": "4.7mg", "ビタミンK": "87μg", "葉酸": "105μg"
+            },
+            "炭火焼風味 鶏つくねの親子丼(1食 375g 当たり)": {
+                "熱量": "576kcal", "たんぱく質": "23.3g", "脂質": "18.1g", "飽和脂肪酸": "3.9g", "n-3系脂肪酸": "1.2g", "n-6系脂肪酸": "5.0g", "炭水化物": "79.5g", "糖質": "71.1g", "食物繊維": "8.4g", "食塩相当量": "2.7g", "亜鉛": "4.8mg", "カリウム": "903mg", "カルシウム": "283mg", "クロム": "5μg", "セレン": "36μg", "鉄": "4.4mg", "銅": "0.4mg", "マグネシウム": "130mg", "マンガン": "1.9mg", "モリブデン": "86μg", "ヨウ素": "185μg", "リン": "413mg", "ナイアシン": "14mg", "パントテン酸": "3.7mg", "ビオチン": "43μg", "ビタミンA": "490μg", "ビタミンB1": "0.8mg", "ビタミンB2": "1.2mg", "ビタミンB6": "1.9mg", "ビタミンB12": "2.2μg", "ビタミンC": "60mg", "ビタミンD": "7.8μg", "ビタミンE": "4.7mg", "ビタミンK": "108μg", "葉酸": "111μg"
+            },
+            "オイスターソース仕立ての五目あんかけ焼そば(1食 344g 当たり)": {
+                "熱量": "473kcal", "たんぱく質": "18.7g", "脂質": "14.9g", "飽和脂肪酸": "3.5g", "n-3系脂肪酸": "0.8g", "n-6系脂肪酸": "3.6g", "炭水化物": "68.3g", "糖質": "62.2g", "食物繊維": "6.1g", "食塩相当量": "2.9g", "亜鉛": "3.4mg", "カリウム": "718mg", "カルシウム": "-", "クロム": "6μg", "セレン": "40μg", "鉄": "3.4mg", "銅": "0.3mg", "マグネシウム": "106mg", "マンガン": "1.5mg", "モリブデン": "14μg", "ヨウ素": "93μg", "リン": "288mg", "ナイアシン": "7mg", "パントテン酸": "2.4mg", "ビオチン": "20μg", "ビタミンA": "371μg", "ビタミンB1": "0.7mg", "ビタミンB2": "0.8mg", "ビタミンB6": "3.3mg", "ビタミンB12": "1.7μg", "ビタミンC": "33mg", "ビタミンD": "7.8μg", "ビタミンE": "2.6mg", "ビタミンK": "87μg", "葉酸": "85μg"
+            },
+            "旨辛豆板醤の肉味噌まぜうどん(1食 315g 当たり)": {
+                "熱量": "454kcal", "たんぱく質": "17.9g", "脂質": "12.3g", "飽和脂肪酸": "3.5g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "3.1g", "炭水化物": "71.3g", "糖質": "63.8g", "食物繊維": "7.5g", "食塩相当量": "2.6g", "亜鉛": "3.3mg", "カリウム": "712mg", "カルシウム": "290mg", "クロム": "21μg", "セレン": "9μg", "鉄": "3.2mg", "銅": "0.3mg", "マグネシウム": "104mg", "マンガン": "1.2mg", "モリブデン": "26μg", "ヨウ素": "40μg", "リン": "279mg", "ナイアシン": "12mg", "パントテン酸": "2.9mg", "ビオチン": "27μg", "ビタミンA": "435μg", "ビタミンB1": "1.0mg", "ビタミンB2": "0.7mg", "ビタミンB6": "6.6mg", "ビタミンB12": "2.0μg", "ビタミンC": "55mg", "ビタミンD": "11.5μg", "ビタミンE": "4.0mg", "ビタミンK": "87μg", "葉酸": "133μg"
+            },
+            "生パスタのカルボナーラ(1食 301g 当たり)": {
+                "熱量": "484kcal", "たんぱく質": "20.0g", "脂質": "15.5g", "飽和脂肪酸": "3.8g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "3.3g", "炭水化物": "70.9g", "糖質": "64.2g", "食物繊維": "6.7g", "食塩相当量": "2.8g", "亜鉛": "4.3mg", "カリウム": "749mg", "カルシウム": "300mg", "クロム": "6μg", "セレン": "41μg", "鉄": "4.3mg", "銅": "0.3mg", "マグネシウム": "114mg", "マンガン": "1.7mg", "モリブデン": "20μg", "ヨウ素": "132μg", "リン": "303mg", "ナイアシン": "12mg", "パントテン酸": "3.9mg", "ビオチン": "26μg", "ビタミンA": "349μg", "ビタミンB1": "1.2mg", "ビタミンB2": "1.2mg", "ビタミンB6": "5.6mg", "ビタミンB12": "3.0μg", "ビタミンC": "43mg", "ビタミンD": "10.1μg", "ビタミンE": "4.5mg", "ビタミンK": "133μg", "葉酸": "106μg"
+            },
+            "バター醤油香る たらこパスタ(1食 288g 当たり)": {
+                "熱量": "457kcal", "たんぱく質": "18.6g", "脂質": "11.4g", "飽和脂肪酸": "2.1g", "n-3系脂肪酸": "0.7g", "n-6系脂肪酸": "3.2g", "炭水化物": "67.6g", "糖質": "61.4g", "食物繊維": "6.2g", "食塩相当量": "2.8g", "亜鉛": "3.3mg", "カリウム": "747mg", "カルシウム": "318mg", "クロム": "4μg", "セレン": "60μg", "鉄": "3.2mg", "銅": "0.3mg", "マグネシウム": "119mg", "マンガン": "1.2mg", "モリブデン": "49μg", "ヨウ素": "123μg", "リン": "306mg", "ナイアシン": "12mg", "パントテン酸": "3.3mg", "ビオチン": "28μg", "ビタミンA": "401μg", "ビタミンB1": "1.0mg", "ビタミンB2": "0.7mg", "ビタミンB6": "7.4mg", "ビタミンB12": "2.1μg", "ビタミンC": "56mg", "ビタミンD": "13.5μg", "ビタミンE": "4.5mg", "ビタミンK": "83μg", "葉酸": "109μg"
+            },
+            "ほぐし鮭と大葉おにぎり(1個 100g 当たり)": {
+                "熱量": "196kcal", "たんぱく質": "7.7g", "脂質": "4.4g", "飽和脂肪酸": "0.7g", "n-3系脂肪酸": "0.3g", "n-6系脂肪酸": "1.5g", "炭水化物": "31.5g", "糖質": "28.9g", "食物繊維": "2.6g", "食塩相当量": "0.9g", "亜鉛": "1.4mg", "カリウム": "304mg", "カルシウム": "97mg", "クロム": "2μg", "セレン": "11μg", "鉄": "1.3mg", "銅": "0.2mg", "マグネシウム": "45mg", "マンガン": "0.6mg", "モリブデン": "30μg", "ヨウ素": "142μg", "リン": "123mg", "ナイアシン": "5mg", "パントテン酸": "1.0mg", "ビオチン": "14μg", "ビタミンA": "160μg", "ビタミンB1": "0.2mg", "ビタミンB2": "0.3mg", "ビタミンB6": "0.4mg", "ビタミンB12": "1.2μg", "ビタミンC": "19mg", "ビタミンD": "6.4μg", "ビタミンE": "1.1mg", "ビタミンK": "32μg", "葉酸": "42μg"
+            },
+            "紀州産梅と蒸し鶏おにぎり(1個 100g 当たり)": {
+                "熱量": "181kcal", "たんぱく質": "7.2g", "脂質": "4.1g", "飽和脂肪酸": "0.7g", "n-3系脂肪酸": "0.3g", "n-6系脂肪酸": "1.5g", "炭水化物": "28.9g", "糖質": "26.5g", "食物繊維": "2.4g", "食塩相当量": "0.8g", "亜鉛": "1.3mg", "カリウム": "292mg", "カルシウム": "90mg", "クロム": "1μg", "セレン": "7μg", "鉄": "1.3mg", "銅": "0.1mg", "マグネシウム": "43mg", "マンガン": "0.6mg", "モリブデン": "26μg", "ヨウ素": "21μg", "リン": "115mg", "ナイアシン": "5mg", "パントテン酸": "1.1mg", "ビオチン": "14μg", "ビタミンA": "159μg", "ビタミンB1": "0.2mg", "ビタミンB2": "0.4mg", "ビタミンB6": "0.5mg", "ビタミンB12": "0.7μg", "ビタミンC": "23mg", "ビタミンD": "2.4μg", "ビタミンE": "1.1mg", "ビタミンK": "33μg", "葉酸": "42μg"
+            },
+            "ツナマヨ味五目ごはんおにぎり(1個 100g 当たり)": {
+                "熱量": "176kcal", "たんぱく質": "6.9g", "脂質": "3.9g", "飽和脂肪酸": "0.6g", "n-3系脂肪酸": "0.3g", "n-6系脂肪酸": "1.3g", "炭水化物": "28.3g", "糖質": "26.0g", "食物繊維": "2.3g", "食塩相当量": "0.9g", "亜鉛": "1.3mg", "カリウム": "269mg", "カルシウム": "85mg", "クロム": "1μg", "セレン": "6μg", "鉄": "1.1mg", "銅": "0.1mg", "マグネシウム": "40mg", "マンガン": "0.6mg", "モリブデン": "29μg", "ヨウ素": "38μg", "リン": "118mg", "ナイアシン": "4mg", "パントテン酸": "0.9mg", "ビオチン": "12μg", "ビタミンA": "152μg", "ビタミンB1": "0.2mg", "ビタミンB2": "0.3mg", "ビタミンB6": "0.4mg", "ビタミンB12": "1.1μg", "ビタミンC": "20mg", "ビタミンD": "1.9μg", "ビタミンE": "1.1mg", "ビタミンK": "34μg", "葉酸": "48μg"
+            },
+            "ピリ辛明太子と高菜おにぎり(1個 100g 当たり)": {
+                "熱量": "188kcal", "たんぱく質": "7.4g", "脂質": "4.2g", "飽和脂肪酸": "0.7g", "n-3系脂肪酸": "0.4g", "n-6系脂肪酸": "1.4g", "炭水化物": "30.0g", "糖質": "27.6g", "食物繊維": "2.4g", "食塩相当量": "0.8g", "亜鉛": "1.6mg", "カリウム": "285mg", "カルシウム": "91mg", "クロム": "1μg", "セレン": "6μg", "鉄": "1.3mg", "銅": "0.2mg", "マグネシウム": "42mg", "マンガン": "0.7mg", "モリブデン": "33μg", "ヨウ素": "20μg", "リン": "125mg", "ナイアシン": "7mg", "パントテン酸": "1.0mg", "ビオチン": "9μg", "ビタミンA": "164μg", "ビタミンB1": "0.2mg", "ビタミンB2": "0.3mg", "ビタミンB6": "0.5mg", "ビタミンB12": "1.4μg", "ビタミンC": "21mg", "ビタミンD": "2.4μg", "ビタミンE": "1.5mg", "ビタミンK": "27μg", "葉酸": "50μg"
+            },
+            "ちりめん山椒と枝豆おにぎり(1個 100g 当たり)": {
+                "熱量": "185kcal", "たんぱく質": "7.3g", "脂質": "4.1g", "飽和脂肪酸": "0.7g", "n-3系脂肪酸": "0.2g", "n-6系脂肪酸": "1.4g", "炭水化物": "29.4g", "糖質": "27.0g", "食物繊維": "2.4g", "食塩相当量": "0.9g", "亜鉛": "1.4mg", "カリウム": "292mg", "カルシウム": "92mg", "クロム": "1μg", "セレン": "6μg", "鉄": "1.3mg", "銅": "0.2mg", "マグネシウム": "43mg", "マンガン": "0.6mg", "モリブデン": "35μg", "ヨウ素": "20μg", "リン": "128mg", "ナイアシン": "5mg", "パントテン酸": "1.0mg", "ビオチン": "15μg", "ビタミンA": "159μg", "ビタミンB1": "0.3mg", "ビタミンB2": "0.4mg", "ビタミンB6": "0.5mg", "ビタミンB12": "0.9μg", "ビタミンC": "24mg", "ビタミンD": "4.2μg", "ビタミンE": "1.1mg", "ビタミンK": "33μg", "葉酸": "55μg"
+            },
+            "コチュジャン香るビビンバ風おにぎり(1個 100g 当たり)": {
+                "熱量": "203kcal", "たんぱく質": "8.1g", "脂質": "5.1g", "飽和脂肪酸": "1.3g", "n-3系脂肪酸": "0.3g", "n-6系脂肪酸": "1.4g", "炭水化物": "31.1g", "糖質": "28.4g", "食物繊維": "2.7g", "食塩相当量": "1.0g", "亜鉛": "1.6mg", "カリウム": "339mg", "カルシウム": "103mg", "クロム": "1μg", "セレン": "7μg", "鉄": "1.4mg", "銅": "0.2mg", "マグネシウム": "48mg", "マンガン": "0.7mg", "モリブデン": "39μg", "ヨウ素": "21μg", "リン": "152mg", "ナイアシン": "6mg", "パントテン酸": "1.1mg", "ビオチン": "14μg", "ビタミンA": "193μg", "ビタミンB1": "0.3mg", "ビタミンB2": "0.4mg", "ビタミンB6": "0.5mg", "ビタミンB12": "0.7μg", "ビタミンC": "23mg", "ビタミンD": "2.6μg", "ビタミンE": "1.2mg", "ビタミンK": "36μg", "葉酸": "58μg"
+            }
+        };
+        
+        // 栄養素のカテゴリ分け
+        const nutrientCategories = {
+            "main": ["熱量", "たんぱく質", "脂質", "炭水化物", "食物繊維", "食塩相当量"],
+            "minerals": ["亜鉛", "カリウム", "カルシウム", "クロム", "セレン", "鉄", "銅", "マグネシウム", "マンガン", "モリブデン", "ヨウ素", "リン"],
+            "vitamins": ["ナイアシン", "パントテン酸", "ビオチン", "ビタミンA", "ビタミンB1", "ビタミンB2", "ビタミンB6", "ビタミンB12", "ビタミンC", "ビタミンD", "ビタミンE", "ビタミンK", "葉酸"]
+        };
+
+        // 栄養素の色設定
+        const nutrientColors = {
+            "main": {
+                "熱量": "#FF6384", "たんぱく質": "#36A2EB", "脂質": "#FFCE56", "炭水化物": "#4BC0C0", "糖質": "#9966FF", "食物繊維": "#FF9F40", "食塩相当量": "#C9CBCF"
+            },
+            "minerals": {
+                backgroundColor: [ 'rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)', 'rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)', 'rgba(255, 159, 64, 0.6)', 'rgba(199, 199, 199, 0.6)', 'rgba(83, 102, 255, 0.6)', 'rgba(40, 180, 99, 0.6)', 'rgba(205, 92, 92, 0.6)', 'rgba(70, 130, 180, 0.6)', 'rgba(128, 0, 128, 0.6)' ],
+                borderColor: [ 'rgb(255, 99, 132)', 'rgb(54, 162, 235)', 'rgb(255, 206, 86)', 'rgb(75, 192, 192)', 'rgb(153, 102, 255)', 'rgb(255, 159, 64)', 'rgb(201, 203, 207)', 'rgb(83, 102, 255)', 'rgb(40, 180, 99)', 'rgb(205, 92, 92)', 'rgb(70, 130, 180)', 'rgb(128, 0, 128)' ]
+            },
+            "vitamins": {
+                backgroundColor: [ 'rgba(106, 90, 205, 0.6)', 'rgba(60, 179, 113, 0.6)', 'rgba(255, 165, 0, 0.6)', 'rgba(255, 99, 71, 0.6)', 'rgba(30, 144, 255, 0.6)', 'rgba(255, 215, 0, 0.6)', 'rgba(218, 112, 214, 0.6)', 'rgba(46, 139, 87, 0.6)', 'rgba(255, 127, 80, 0.6)', 'rgba(100, 149, 237, 0.6)', 'rgba(189, 183, 107, 0.6)', 'rgba(221, 160, 221, 0.6)', 'rgba(143, 188, 143, 0.6)' ],
+                borderColor: [ 'rgb(106, 90, 205)', 'rgb(60, 179, 113)', 'rgb(255, 165, 0)', 'rgb(255, 99, 71)', 'rgb(30, 144, 255)', 'rgb(255, 215, 0)', 'rgb(218, 112, 214)', 'rgb(46, 139, 87)', 'rgb(255, 127, 80)', 'rgb(100, 149, 237)', 'rgb(189, 183, 107)', 'rgb(221, 160, 221)', 'rgb(143, 188, 143)' ]
+            }
+        };
+
+        // 単位を抽出する関数
+        function extractUnit(valueWithUnit) {
+            if (!valueWithUnit) return '';
+            if (valueWithUnit === "-") return '';
+            if (typeof valueWithUnit !== 'string') return ''; // 数値型が直接来た場合など
+            
+            // μgのような特殊な単位に対応
+            if (valueWithUnit.includes("μg")) return "μg";
+            if (valueWithUnit.includes("kcal")) return "kcal"; // 熱量用
+            
+            return valueWithUnit.replace(/[0-9.-]/g, ''); // 小数点とマイナスも除去
+        }
+        
+        // 栄養素名から単位を返すヘルパー関数 (displayStandards用)
+        function getUnit(nutrient) {
+            // 既知の栄養素とその単位をマッピング
+            const unitMap = {
+                "熱量": "kcal", "たんぱく質": "g", "脂質": "g", "飽和脂肪酸": "g",
+                "n-3系脂肪酸": "g", "n-6系脂肪酸": "g", "炭水化物": "g", "糖質": "g",
+                "食物繊維": "g", "食塩相当量": "g", "亜鉛": "mg", "カリウム": "mg",
+                "カルシウム": "mg", "クロム": "μg", "セレン": "μg", "鉄": "mg",
+                "銅": "mg", "マグネシウム": "mg", "マンガン": "mg", "モリブデン": "μg",
+                "ヨウ素": "μg", "リン": "mg", "ナイアシン": "mg", "パントテン酸": "mg",
+                "ビオチン": "μg", "ビタミンA": "μg", "ビタミンB1": "mg", "ビタミンB2": "mg",
+                "ビタミンB6": "mg", "ビタミンB12": "μg", "ビタミンC": "mg", "ビタミンD": "μg",
+                "ビタミンE": "mg", "ビタミンK": "μg", "葉酸": "μg"
+            };
+            return unitMap[nutrient] || ''; // マップにない場合は空文字
+        }
+
+
+        // 数値を抽出する関数
+        function extractNumber(valueWithUnit) {
+            if (!valueWithUnit) return 0;
+            if (valueWithUnit === "-") return 0;
+            if (typeof valueWithUnit !== 'string') return parseFloat(valueWithUnit) || 0; // 数値型が直接来た場合
+            
+            return parseFloat(valueWithUnit.replace(/[^0-9.]/g, ''));
+        }
+
+        // 選択された食品を格納する配列
+        let selectedFoods = [];
+        
+        // チャートのインスタンス
+        let nutritionChart = null;
+        
+        // 表示モード（%表示か絶対値表示か）
+        let displayMode = "percent";
+        
+        // 初期化処理
+        window.onload = function() {
+            // 食品選択ドロップダウンの初期化
+            const foodSelect = document.getElementById('food-select');
+            Object.keys(nutritionData).sort().forEach(food => {
+                const option = document.createElement('option');
+                option.value = food;
+                option.textContent = food;
+                foodSelect.appendChild(option);
+            });
+            
+            // 検索機能の初期化
+            const searchInput = document.getElementById('food-search');
+            const searchResults = document.getElementById('search-results');
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length < 2) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+                
+                const filteredFoods = Object.keys(nutritionData).filter(food => 
+                    food.toLowerCase().includes(query)
+                );
+                
+                searchResults.innerHTML = '';
+                if (filteredFoods.length > 0) {
+                    filteredFoods.forEach(food => {
+                        const item = document.createElement('div');
+                        item.className = 'search-item';
+                        item.textContent = food;
+                        item.onclick = function() {
+                            document.getElementById('food-select').value = food;
+                            searchResults.style.display = 'none';
+                            searchInput.value = ''; // 検索窓をクリア
+                        };
+                        searchResults.appendChild(item);
+                    });
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            });
+             // どこか他の場所をクリックしたら検索結果を閉じる
+            document.addEventListener('click', function(event) {
+                if (!searchResults.contains(event.target) && event.target !== searchInput) {
+                    searchResults.style.display = 'none';
+                }
+            });
+
+
+            // メニュー追加ボタンのイベント処理
+            document.getElementById('add-food').addEventListener('click', function() {
+                const selectedFood = document.getElementById('food-select').value;
+                if (selectedFood && selectedFood !== "") {
+                    addFood(selectedFood);
+                    updateNutritionChart();
+                    updateNutritionDetails();
+                }
+            });
+
+            // リセットボタンのイベント処理
+            document.getElementById('reset-foods').addEventListener('click', function() {
+                selectedFoods = [];
+                updateSelectedFoods();
+                updateNutritionChart();
+                updateNutritionDetails();
+                document.getElementById('total-calories').textContent = '0';
+                document.getElementById('calorie-percent').textContent = '(基準値の0%)';
+            });
+
+            // 表示モード切替
+            document.getElementById('display-percent').addEventListener('click', function() {
+                displayMode = "percent";
+                document.getElementById('display-percent').classList.remove('bg-white', 'text-gray-900');
+                document.getElementById('display-percent').classList.add('bg-blue-600', 'text-white');
+                document.getElementById('display-absolute').classList.remove('bg-blue-600', 'text-white');
+                document.getElementById('display-absolute').classList.add('bg-white', 'text-gray-900');
+                updateNutritionChart();
+            });
+
+            document.getElementById('display-absolute').addEventListener('click', function() {
+                displayMode = "absolute";
+                document.getElementById('display-absolute').classList.remove('bg-white', 'text-gray-900');
+                document.getElementById('display-absolute').classList.add('bg-blue-600', 'text-white');
+                document.getElementById('display-percent').classList.remove('bg-blue-600', 'text-white');
+                document.getElementById('display-percent').classList.add('bg-white', 'text-gray-900');
+                updateNutritionChart();
+            });
+
+            // 栄養素カテゴリ選択
+            document.getElementById('nutrient-select').addEventListener('change', function() {
+                updateNutritionChart();
+            });
+
+            // 設定保存ボタン
+            document.getElementById('save-settings').addEventListener('click', function() {
+                // --- ① ここから userSettings をセット ---
+                userSettings = {
+                    gender   : document.getElementById('gender').value,
+                    ageGroup : document.getElementById('age-group').value,
+                    activity : document.getElementById('activity-level').value,
+                    weight   : parseFloat(document.getElementById('weight').value),
+                    menstruation : document.querySelector('input[name="menstruation"]:checked')?.value, // 追加
+                    pregnancyStatus : document.getElementById('pregnancy').value // 追加
+                };
+                // --- ここまで ---
+                // 1) 設定値を保存して内部データ更新
+                updateTotalCalories(); // この関数は userSettings を参照するように変更する方が望ましい
+                // 2) 栄養素チャートを更新（グラフを再描画）
+                updateNutritionChart();
+                // 3) 新しい関数で“個人情報から計算した”基準値を画面に表示
+                displayStandards();
+                // 4) タブ切り替え＆アラート
+                document.getElementById('tab-nutrition').click();
+                alert('設定を保存しました。');
+            });
+
+            // 性別切り替え時の処理
+            document.getElementById('gender').addEventListener('change', function() {
+                const gender = this.value;
+                const femaleOnlyElements = document.querySelectorAll('.female-only');
+                
+                if (gender === 'female') {
+                    femaleOnlyElements.forEach(el => el.classList.remove('hidden'));
+                } else {
+                    femaleOnlyElements.forEach(el => el.classList.add('hidden'));
+                }
+            });
+
+            // タブ切り替え
+            document.getElementById('tab-nutrition').addEventListener('click', function() {
+                document.getElementById('nutrition-container').classList.remove('hidden');
+                document.getElementById('settings-container').classList.add('hidden');
+                document.getElementById('tab-nutrition').classList.add('tab-active');
+                document.getElementById('tab-nutrition').classList.remove('tab-inactive');
+                document.getElementById('tab-settings').classList.add('tab-inactive');
+                document.getElementById('tab-settings').classList.remove('tab-active');
+            });
+
+            document.getElementById('tab-settings').addEventListener('click', function() {
+                document.getElementById('nutrition-container').classList.add('hidden');
+                document.getElementById('settings-container').classList.remove('hidden');
+                document.getElementById('tab-nutrition').classList.add('tab-inactive');
+                document.getElementById('tab-nutrition').classList.remove('tab-active');
+                document.getElementById('tab-settings').classList.add('tab-active');
+                document.getElementById('tab-settings').classList.remove('tab-inactive');
+            });
+
+            // 初期グラフ作成
+            createNutritionChart();
+            // 初期状態で設定を読み込む (もしあればlocalStorageなどから) か、デフォルト値をuserSettingsに設定
+            // 今回の指示には含まれないため、初回は空のuserSettingsで動作。save-settings押下後に有効になる。
+            // もし初回から基準値を使いたい場合は、デフォルト値を設定するか、
+            // DOMContentLoaded後やonload時に一度フォームから読み込んでuserSettingsを初期化する必要がある。
+            // 例:
+            userSettings = {
+                gender   : document.getElementById('gender').value,
+                ageGroup : document.getElementById('age-group').value,
+                activity : document.getElementById('activity-level').value,
+                weight   : parseFloat(document.getElementById('weight').value) || 0, // 未入力時NaNにならないように
+                menstruation : document.querySelector('input[name="menstruation"]:checked')?.value, // 追加
+                pregnancyStatus : document.getElementById('pregnancy').value // 追加
+            };
+            updateTotalCalories(); // 初期カロリー表示のため
+            displayStandards(); // 初期基準値表示のため
+
+
+            /* --- 追加コード開始 --- */
+            document.getElementById('submit-intake').addEventListener('click', () => {
+                const today = new Date().toISOString().slice(0,10);
+                const summary = { date: today, foods: selectedFoods.slice(), totals: {} };
+                const allNutrients = [...nutrientCategories.main, ...nutrientCategories.minerals, ...nutrientCategories.vitamins];
+                
+                allNutrients.forEach(nutrient => {
+                    let sum = 0;
+                    let unit = getUnit(nutrient); // 単位取得
+                    selectedFoods.forEach(food => {
+                        if (nutritionData[food][nutrient]) {
+                            sum += extractNumber(nutritionData[food][nutrient]);
+                        }
+                    });
+                    if (sum > 0 || nutrient === "熱量" || nutrient === "たんぱく質" || nutrient === "脂質" || nutrient === "炭水化物") { // 主要栄養素は0でも表示する例
+                         summary.totals[nutrient] = `${sum.toFixed(1)}${unit}`;
+                    }
+                });
+
+                document.getElementById('today-intake-json').textContent = JSON.stringify(summary, null, 2);
+                document.getElementById('today-intake-display').classList.remove('hidden');
+            });
+
+            document.getElementById('today-intake-cancel').addEventListener('click', () => {
+                document.getElementById('today-intake-display').classList.add('hidden');
+            });
+            /* --- 追加コード終了 --- */
+        };
+        
+        // 食品を追加する関数
+        function addFood(foodName) {
+            selectedFoods.push(foodName);
+            updateSelectedFoods();
+            updateTotalCalories();
+        }
+
+        // 選択された食品リストを更新
+        function updateSelectedFoods() {
+            const selectedFoodsElement = document.getElementById('selected-foods');
+            if (selectedFoods.length === 0) {
+                selectedFoodsElement.innerHTML = '<div class="text-gray-400 text-sm italic">メニューが選択されていません</div>';
+                return;
+            }
+            
+            selectedFoodsElement.innerHTML = '';
+            selectedFoods.forEach((food, index) => {
+                const foodItem = document.createElement('div');
+                foodItem.className = 'flex justify-between items-center py-1 border-b last:border-0';
+                foodItem.innerHTML = `
+                    <span class="text-sm">${index + 1}. ${food}</span>
+                    <button class="text-red-500 hover:text-red-700" onclick="removeFood(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                selectedFoodsElement.appendChild(foodItem);
+            });
+        }
+
+        // 食品を削除する関数
+        function removeFood(index) {
+            selectedFoods.splice(index, 1);
+            updateSelectedFoods();
+            updateNutritionChart();
+            updateNutritionDetails();
+            updateTotalCalories();
+        }
+
+        // 総カロリーを更新
+        function updateTotalCalories() {
+            let totalCalories = 0;
+            selectedFoods.forEach(food => {
+                const calorieStr = nutritionData[food]["熱量"];
+                if (calorieStr) {
+                    totalCalories += extractNumber(calorieStr);
+                }
+            });
+            
+            document.getElementById('total-calories').textContent = Math.round(totalCalories);
+            
+            // カロリーのパーセンテージ計算
+            // userSettingsが未設定(ページロード直後など)の場合を考慮
+            if (userSettings.gender && userSettings.ageGroup && userSettings.activity && userSettings.weight) {
+                const energyPerKg = nutritionStandards.energy_per_kg[userSettings.gender]?.[userSettings.ageGroup]?.[userSettings.activity];
+                if (energyPerKg && userSettings.weight) {
+                    const recommendedCalories = energyPerKg * userSettings.weight;
+                    if (recommendedCalories > 0) { // 基準カロリーが0以上の場合のみ計算
+                        const percentage = Math.round((totalCalories / recommendedCalories) * 100);
+                        document.getElementById('calorie-percent').textContent = `(基準値の${percentage}%)`;
+                    } else {
+                        document.getElementById('calorie-percent').textContent = '(基準値計算不可)';
+                    }
+                } else {
+                     document.getElementById('calorie-percent').textContent = '(基準値情報なし)';
+                }
+            } else {
+                 document.getElementById('calorie-percent').textContent = '(個人設定未入力)';
+            }
+            currentTotalCalories = totalCalories; // ★この行を追加
+        }
+
+        // 栄養詳細を更新
+        function updateNutritionDetails() {
+            const nutritionDetailsElement = document.getElementById('nutrition-details');
+            if (selectedFoods.length === 0) {
+                nutritionDetailsElement.innerHTML = '<div class="text-gray-400 italic">メニューを選択すると詳細が表示されます</div>';
+                return;
+            }
+            
+            const totalNutrition = {};
+            
+            // 全栄養素カテゴリーをループ
+            Object.keys(nutrientCategories).forEach(category => {
+                nutrientCategories[category].forEach(nutrient => {
+                    totalNutrition[nutrient] = 0;
+                    selectedFoods.forEach(food => {
+                        if (nutritionData[food][nutrient]) {
+                            totalNutrition[nutrient] += extractNumber(nutritionData[food][nutrient]);
+                        }
+                    });
+                });
+            });
+            
+            // 糖質の計算（基準値はないが絶対値は表示する）
+            totalNutrition["糖質"] = 0;
+            selectedFoods.forEach(food => {
+                if (nutritionData[food]["糖質"]) {
+                    totalNutrition["糖質"] += extractNumber(nutritionData[food]["糖質"]);
+                }
+            });
+            
+            // 基準値を取得
+            const standards = calculateStandardValues(
+                userSettings.gender || "male",
+                userSettings.ageGroup || "30-49",
+                userSettings.activity || "medium",
+                userSettings.weight || 60,
+                document.querySelector('input[name="menstruation"]:checked')?.value || "no",
+                document.getElementById('pregnancy')?.value || "none"
+            );
+            
+            nutritionDetailsElement.innerHTML = '';
+            
+            // 主要栄養素セクション
+            nutritionDetailsElement.innerHTML += '<div class="col-span-2 sm:col-span-3 md:col-span-4 mt-1 mb-2 font-semibold text-blue-600 border-b pb-1">■ 主要栄養素</div>';
+            const mainNutrientsWithSugar = [...nutrientCategories.main, "糖質"]; // 糖質を主要栄養素の最後に追加して表示
+            mainNutrientsWithSugar.forEach(nutrient => {
+                const unit = getUnit(nutrient);
+                const value = totalNutrition[nutrient] !== undefined ? totalNutrition[nutrient].toFixed(1) : '0.0';
+                let percentageText = '';
+
+                if (standards[nutrient] && standards[nutrient].value !== null && standards[nutrient].value > 0 && nutrient !== "糖質") {
+                    const percentage = Math.round((parseFloat(value) / standards[nutrient].value) * 100);
+                    percentageText = ` (${percentage}%)`;
+                } else if (nutrient === "糖質") {
+                    percentageText = ''; // 糖質にはパーセント表示なし
+                }
+
+                const detailItem = document.createElement('div');
+                detailItem.className = 'bg-white p-2 rounded shadow-sm';
+                detailItem.innerHTML = `
+                    <div class="font-semibold">${nutrient}</div>
+                    <div class="text-lg font-bold">${value}${unit}${percentageText}</div>
+                `;
+                nutritionDetailsElement.appendChild(detailItem);
+            });
+            
+            nutritionDetailsElement.innerHTML += '<div class="col-span-2 sm:col-span-3 md:col-span-4 mt-3 mb-2 font-semibold text-green-600 border-b pb-1">■ ミネラル類</div>';
+            nutrientCategories.minerals.forEach(nutrient => {
+                const unit = getUnit(nutrient);
+                const value = totalNutrition[nutrient] !== undefined ? totalNutrition[nutrient].toFixed(1) : '0.0';
+                let percentageText = '';
+
+                if (standards[nutrient] && standards[nutrient].value !== null && standards[nutrient].value > 0) {
+                    const percentage = Math.round((parseFloat(value) / standards[nutrient].value) * 100);
+                    percentageText = ` (${percentage}%)`;
+                }
+
+                const detailItem = document.createElement('div');
+                detailItem.className = 'bg-white p-2 rounded shadow-sm';
+                detailItem.innerHTML = `
+                    <div class="font-semibold">${nutrient}</div>
+                    <div class="text-lg font-bold">${value}${unit}${percentageText}</div>
+                `;
+                nutritionDetailsElement.appendChild(detailItem);
+            });
+            
+            nutritionDetailsElement.innerHTML += '<div class="col-span-2 sm:col-span-3 md:col-span-4 mt-3 mb-2 font-semibold text-yellow-600 border-b pb-1">■ ビタミン類</div>';
+            nutrientCategories.vitamins.forEach(nutrient => {
+                const unit = getUnit(nutrient);
+                const value = totalNutrition[nutrient] !== undefined ? totalNutrition[nutrient].toFixed(1) : '0.0';
+                let percentageText = '';
+
+                if (standards[nutrient] && standards[nutrient].value !== null && standards[nutrient].value > 0) {
+                    const percentage = Math.round((parseFloat(value) / standards[nutrient].value) * 100);
+                    percentageText = ` (${percentage}%)`;
+                }
+                
+                const detailItem = document.createElement('div');
+                detailItem.className = 'bg-white p-2 rounded shadow-sm';
+                detailItem.innerHTML = `
+                    <div class="font-semibold">${nutrient}</div>
+                    <div class="text-lg font-bold">${value}${unit}${percentageText}</div>
+                `;
+                nutritionDetailsElement.appendChild(detailItem);
+            });
+        }
+
+        // 栄養素チャート更新
+        function updateNutritionChart() {
+            if (!userSettings.gender || !userSettings.ageGroup || !userSettings.activity || !userSettings.weight) {
+                // userSettingsが完全に設定されていない場合はグラフ更新をスキップ、またはメッセージ表示
+                // console.log("ユーザー設定が不完全なため、グラフを更新できません。");
+                // return; 
+                // もしくは、グラフを空にするか、デフォルト値で表示するかなど仕様による
+            }
+
+            const selectedCategory = document.getElementById('nutrient-select').value;
+            const nutrients = nutrientCategories[selectedCategory];
+            
+            const labels = [];
+            const data = [];
+            const backgroundColor = [];
+            const borderColor = [];
+            
+            nutrients.forEach((nutrient, index) => {
+                labels.push(nutrient);
+                
+                let totalValue = 0;
+                selectedFoods.forEach(food => {
+                    if (nutritionData[food][nutrient]) {
+                        totalValue += extractNumber(nutritionData[food][nutrient]);
+                    }
+                });
+                
+                if (displayMode === "percent") {
+                    const standardValue = getStandardValue(nutrient); // userSettings を参照する
+                    const percentage = (standardValue && standardValue > 0) ? (totalValue / standardValue) * 100 : 0;
+                    data.push(Math.round(percentage));
+                } else {
+                    data.push(parseFloat(totalValue.toFixed(1))); // 絶対値は小数点1位まで
+                }
+                
+                if (selectedCategory === "main") {
+                    backgroundColor.push(nutrientColors.main[nutrient] + "AA"); // 透明度追加
+                    borderColor.push(nutrientColors.main[nutrient]);
+                } else {
+                    backgroundColor.push(nutrientColors[selectedCategory].backgroundColor[index % nutrientColors[selectedCategory].backgroundColor.length]);
+                    borderColor.push(nutrientColors[selectedCategory].borderColor[index % nutrientColors[selectedCategory].borderColor.length]);
+                }
+            });
+            
+            if (nutritionChart) {
+                nutritionChart.data.labels = labels;
+                nutritionChart.data.datasets[0].data = data;
+                nutritionChart.data.datasets[0].backgroundColor = backgroundColor;
+                nutritionChart.data.datasets[0].borderColor = borderColor;
+                nutritionChart.options.scales.y.title.text = displayMode === "percent" ? '基準値に対する割合 (%)' : '摂取量';
+                nutritionChart.update();
+            } else {
+                createNutritionChart(labels, data, backgroundColor, borderColor);
+            }
+        }
+
+        /* シンプル版：calculateStandardValues() の結果を参照する */
+        function getStandardValue(nutrient) {
+            if (!userSettings || !userSettings.gender || !userSettings.ageGroup || !userSettings.activity || isNaN(userSettings.weight)) {
+                return 0; 
+            }
+
+            const standardsSet = calculateStandardValues(
+                userSettings.gender,
+                userSettings.ageGroup,
+                userSettings.activity,
+                userSettings.weight,
+                userSettings.menstruation,
+                userSettings.pregnancyStatus
+            );
+
+            const standardInfo = standardsSet[nutrient];
+
+            if (!standardInfo || standardInfo.value === null) {
+                return 0; // 基準値情報がないか、値がnullなら0を返す
+            }
+
+            // 脂質と炭水化物は%エネルギーからgに換算
+            if (nutrient === "脂質") {
+                if (standardInfo.unit === "%エネルギー" && currentTotalCalories > 0) {
+                    let targetPercent = 0;
+                    if (typeof standardInfo.value === 'string' && standardInfo.value.includes('-')) {
+                        const [min, max] = standardInfo.value.split('-').map(parseFloat);
+                        targetPercent = (min + max) / 2 / 100; // 中央値を割合に
+                    } else if (typeof standardInfo.value === 'number') {
+                        targetPercent = standardInfo.value / 100;
+                    } else {
+                        return 0; // 不明な形式
+                    }
+                    // 脂質は1gあたり9kcal
+                    return (currentTotalCalories * targetPercent) / 9;
+                } else if (standardInfo.unit === "%エネルギー" && currentTotalCalories === 0) {
+                    return 0; // カロリー未摂取なら目標gも0
+                }
+                // %エネルギーでない場合は、そのままの値を返す（通常は発生しないはず）
+                return parseFloat(standardInfo.value) || 0; 
+            }
+
+            if (nutrient === "炭水化物") {
+                if (standardInfo.unit === "%エネルギー" && currentTotalCalories > 0) {
+                    let targetPercent = 0;
+                    if (typeof standardInfo.value === 'string' && standardInfo.value.includes('-')) {
+                        const [min, max] = standardInfo.value.split('-').map(parseFloat);
+                        targetPercent = (min + max) / 2 / 100; // 中央値を割合に
+                    } else if (typeof standardInfo.value === 'number') {
+                        targetPercent = standardInfo.value / 100;
+                    } else {
+                        return 0; // 不明な形式
+                    }
+                    // 炭水化物は1gあたり4kcal
+                    return (currentTotalCalories * targetPercent) / 4;
+                } else if (standardInfo.unit === "%エネルギー" && currentTotalCalories === 0) {
+                    return 0; // カロリー未摂取なら目標gも0
+                }
+                // %エネルギーでない場合は、そのままの値を返す
+                return parseFloat(standardInfo.value) || 0;
+            }
+
+            // その他の栄養素はそのままの値を返す
+            return parseFloat(standardInfo.value) || 0;
+        }
+
+        // 栄養素チャート作成
+        function createNutritionChart(labels = [], data = [], backgroundColor = [], borderColor = []) {
+            const ctx = document.getElementById('nutrition-chart').getContext('2d');
+            
+            nutritionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: displayMode === "percent" ? '摂取割合 (%)' : '摂取量',
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderColor: borderColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    const nutrient = context.label;
+                                    let totalValue = 0;
+                                    selectedFoods.forEach(food => {
+                                        if (nutritionData[food][nutrient]) {
+                                            totalValue += extractNumber(nutritionData[food][nutrient]);
+                                        }
+                                    });
+                                    
+                                    const standardData = calculateStandardValues(
+                                        userSettings.gender || "male",
+                                        userSettings.ageGroup || "30-49",
+                                        userSettings.activity || "medium",
+                                        userSettings.weight || 60,
+                                        document.querySelector('input[name="menstruation"]:checked')?.value || "no",
+                                        document.getElementById('pregnancy')?.value || "none"
+                                    )[nutrient];
+
+                                    const standardValue = standardData ? standardData.value : null;
+                                    const standardType = standardData ? standardData.type : "―";
+                                    const unit = getUnit(nutrient);
+
+                                    let lines = [];
+                                    if (displayMode === "percent") {
+                                        lines.push(`割合: ${context.raw}%`);
+                                        lines.push(`摂取量: ${totalValue.toFixed(1)}${unit}`);
+                                        if (standardValue !== null && standardValue > 0) {
+                                            lines.push(`基準値 (${standardType}): ${standardValue.toFixed(1)}${unit}`);
+                                        } else {
+                                            lines.push(`基準値 (${standardType}): ―`);
+                                        }
+                                    } else {
+                                        lines.push(`摂取量: ${context.raw.toFixed(1)}${unit}`);
+                                        if (standardValue !== null && standardValue > 0) {
+                                            const percent = Math.round((totalValue / standardValue) * 100);
+                                            lines.push(`割合: ${percent}%`);
+                                            lines.push(`基準値 (${standardType}): ${standardValue.toFixed(1)}${unit}`);
+                                        } else {
+                                            lines.push(`割合: ―%`);
+                                            lines.push(`基準値 (${standardType}): ―`);
+                                        }
+                                    }
+                                    return lines;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: displayMode === "percent" ? '基準値に対する割合 (%)' : '摂取量'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 90,
+                                minRotation: 0
+                            }
+                        }
+                    }
+                }
+            });
+            
+            document.getElementById('nutrition-chart').onclick = function(evt) {
+                const activePoints = nutritionChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+                if (activePoints.length > 0) {
+                    updateNutritionDetails(); // 詳細表示はグラフ全体の合計で良いか、クリックしたバーの栄養素に絞るか検討の余地あり
+                }
+            };
+        }
+    </script>
+</body>
+</html>
