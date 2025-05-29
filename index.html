@@ -490,7 +490,41 @@
                 std["熱量"] = { value: 0, type: "体重未入力", unit: "kcal" }; // 体重が不正な場合は0kcalとする
             }
 
-            const displayNames = { /* ... (この部分は元のコードのまま) ... */ }; // displayNamesの定義は変更なしなので、元のコードを参照してください
+            const displayNames = {
+                protein:        "たんぱく質",
+                fat:            "脂質",
+                saturated_fat:  "飽和脂肪酸",
+                n6_fatty_acid:  "n-6系脂肪酸",
+                n3_fatty_acid:  "n-3系脂肪酸",
+                carbohydrate:   "炭水化物",
+                dietary_fiber:  "食物繊維",
+                vitamin_a:      "ビタミンA",
+                vitamin_d:      "ビタミンD",
+                vitamin_e:      "ビタミンE",
+                vitamin_k:      "ビタミンK",
+                vitamin_b1:     "ビタミンB1",
+                vitamin_b2:     "ビタミンB2",
+                niacin:         "ナイアシン",
+                vitamin_b6:     "ビタミンB6",
+                vitamin_b12:    "ビタミンB12",
+                folate:         "葉酸",
+                pantothenic_acid:"パントテン酸",
+                biotin:         "ビオチン",
+                vitamin_c:      "ビタミンC",
+                sodium:         "食塩相当量",
+                potassium:      "カリウム",
+                calcium:        "カルシウム",
+                magnesium:      "マグネシウム",
+                phosphorus:     "リン",
+                iron:           "鉄",
+                zinc:           "亜鉛",
+                copper:         "銅",
+                manganese:      "マンガン",
+                iodine:         "ヨウ素",
+                selenium:       "セレン",
+                chromium:       "クロム",
+                molybdenum:     "モリブデン"
+            };
 
             Object.keys(displayNames).forEach(key => {
                 const nutrientName = displayNames[key];
@@ -3564,66 +3598,71 @@
         let displayMode = "percent";
         
         // 初期化処理
-        // window.onload (新しいコード)
+        // window.onload (新しいコード - これを丸ごとコピーして貼り付け)
         window.onload = function() {
-            // 食品選択ドロップダウンの初期化
-            const foodSelect = document.getElementById('food-select');
-            Object.keys(nutritionData).sort().forEach(food => {
-                const option = document.createElement('option');
-                option.value = food;
-                option.textContent = food;
-                foodSelect.appendChild(option);
-            });
-            
-            // 検索機能の初期化
-            const searchInput = document.getElementById('food-search');
-            const searchResults = document.getElementById('search-results');
-            
-            searchInput.addEventListener('input', function() { /* ... (元の検索ロジックは変更なし) ... */ });
-            document.addEventListener('click', function(event) { /* ... (元の検索ロジックは変更なし) ... */ });
-
-            // デフォルト値設定
-            document.getElementById('height').value = '167';
-            document.getElementById('weight').value = '61';
-
-            // イベントリスナー設定
+            // --- 最初にイベントリスナーを設定 ---
+            // メニュー追加ボタン
             document.getElementById('add-food').addEventListener('click', function() {
                 const selectedFood = document.getElementById('food-select').value;
                 if (selectedFood && selectedFood !== "") {
                     addFood(selectedFood);
-                    updateNutritionChart();
-                    updateNutritionDetails();
+                    try {
+                        updateNutritionChart();
+                        updateNutritionDetails();
+                    } catch (e) {
+                        console.error("Error updating chart/details after adding food:", e);
+                    }
                 }
             });
+            // リセットボタン
             document.getElementById('reset-foods').addEventListener('click', function() {
                 selectedFoods = [];
+                currentTotalCalories = 0; 
                 updateSelectedFoods();
-                updateNutritionChart();
-                updateNutritionDetails();
+                try {
+                    updateNutritionChart();
+                    updateNutritionDetails();
+                } catch (e) {
+                    console.error("Error updating chart/details after reset:", e);
+                }
                 document.getElementById('total-calories').textContent = '0';
                 document.getElementById('calorie-percent').textContent = '(基準値の0%)';
-                currentTotalCalories = 0; // リセット時にcurrentTotalCaloriesも0に
             });
+            // 表示モード切替ボタン (％表示)
             document.getElementById('display-percent').addEventListener('click', function() {
                 displayMode = "percent";
                 document.getElementById('display-percent').classList.remove('bg-white', 'text-gray-900');
                 document.getElementById('display-percent').classList.add('bg-blue-600', 'text-white');
                 document.getElementById('display-absolute').classList.remove('bg-blue-600', 'text-white');
                 document.getElementById('display-absolute').classList.add('bg-white', 'text-gray-900');
-                updateNutritionChart();
+                try {
+                    updateNutritionChart();
+                } catch (e) {
+                    console.error("Error updating chart on display mode change (percent):", e);
+                }
             });
+            // 表示モード切替ボタン (絶対値)
             document.getElementById('display-absolute').addEventListener('click', function() {
                 displayMode = "absolute";
                 document.getElementById('display-absolute').classList.remove('bg-white', 'text-gray-900');
                 document.getElementById('display-absolute').classList.add('bg-blue-600', 'text-white');
                 document.getElementById('display-percent').classList.remove('bg-blue-600', 'text-white');
                 document.getElementById('display-percent').classList.add('bg-white', 'text-gray-900');
-                updateNutritionChart();
+                try {
+                    updateNutritionChart();
+                } catch (e) {
+                    console.error("Error updating chart on display mode change (absolute):", e);
+                }
             });
+            // 栄養素カテゴリ選択
             document.getElementById('nutrient-select').addEventListener('change', function() {
-                updateNutritionChart();
+                try {
+                    updateNutritionChart();
+                } catch (e) {
+                    console.error("Error updating chart after nutrient select:", e);
+                }
             });
-            
+            // 設定保存ボタン
             document.getElementById('save-settings').addEventListener('click', function() {
                 userSettings = {
                     gender   : document.getElementById('gender').value,
@@ -3638,15 +3677,16 @@
                     alert("身長と体重を正しく入力してください。");
                     return; 
                 }
-
-                updateTotalCalories(); 
-                displayStandards(); 
-                updateNutritionChart(); 
-                
+                try {
+                    updateTotalCalories(); 
+                    displayStandards(); 
+                    updateNutritionChart(); 
+                } catch (e) {
+                    console.error("Error processing save settings:", e);
+                }
                 alert('設定を保存しました。');
-                // タブ遷移は行わない
             });
-
+            // 性別切り替え
             document.getElementById('gender').addEventListener('change', function() {
                 const gender = this.value;
                 const femaleOnlyElements = document.querySelectorAll('.female-only');
@@ -3658,45 +3698,141 @@
                 }
             });
 
-            // タブ切り替え
-            document.getElementById('tab-nutrition').addEventListener('click', function() { /* ... (変更なし) ... */ });
-            document.getElementById('tab-settings').addEventListener('click', function() { /* ... (変更なし) ... */ });
+            // タブ切り替えイベントリスナー
+            document.getElementById('tab-nutrition').addEventListener('click', function() {
+                document.getElementById('nutrition-container').classList.remove('hidden');
+                document.getElementById('settings-container').classList.add('hidden');
+                document.getElementById('tab-nutrition').classList.add('tab-active');
+                document.getElementById('tab-nutrition').classList.remove('tab-inactive');
+                document.getElementById('tab-settings').classList.add('tab-inactive');
+                document.getElementById('tab-settings').classList.remove('tab-active');
+            });
+            document.getElementById('tab-settings').addEventListener('click', function() {
+                document.getElementById('nutrition-container').classList.add('hidden');
+                document.getElementById('settings-container').classList.remove('hidden');
+                document.getElementById('tab-nutrition').classList.add('tab-inactive');
+                document.getElementById('tab-nutrition').classList.remove('tab-active');
+                document.getElementById('tab-settings').classList.add('tab-active');
+                document.getElementById('tab-settings').classList.remove('tab-inactive');
+            });
+
+            // 「今日の摂取を表示／送信」関連のイベントリスナー
+            document.getElementById('submit-intake').addEventListener('click', () => {
+                const today = new Date().toISOString().slice(0,10);
+                const summary = { date: today, foods: selectedFoods.slice(), totals: {} };
+                const allNutrients = [...nutrientCategories.main, ...nutrientCategories.minerals, ...nutrientCategories.vitamins];
+                
+                allNutrients.forEach(nutrient => {
+                    let sum = 0;
+                    let unit = getUnit(nutrient); 
+                    selectedFoods.forEach(food => {
+                        if (nutritionData[food][nutrient]) {
+                            sum += extractNumber(nutritionData[food][nutrient]);
+                        }
+                    });
+                    if (sum > 0 || nutrient === "熱量" || nutrient === "たんぱく質" || nutrient === "脂質" || nutrient === "炭水化物") { 
+                            summary.totals[nutrient] = `${sum.toFixed(1)}${unit}`;
+                    }
+                });
+
+                document.getElementById('today-intake-json').textContent = JSON.stringify(summary, null, 2);
+                document.getElementById('today-intake-display').classList.remove('hidden');
+            });
+            document.getElementById('today-intake-cancel').addEventListener('click', () => {
+                document.getElementById('today-intake-display').classList.add('hidden');
+            });
+
+            // --- これ以降に初期化処理やエラーの可能性のある処理を配置 ---
+            // 食品選択ドロップダウンの初期化
+            const foodSelect = document.getElementById('food-select');
+            Object.keys(nutritionData).sort().forEach(food => {
+                const option = document.createElement('option');
+                option.value = food;
+                option.textContent = food;
+                foodSelect.appendChild(option);
+            });
+            
+            // 検索機能の初期化
+            const searchInput = document.getElementById('food-search');
+            const searchResults = document.getElementById('search-results');
+            
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length < 2) {
+                    searchResults.style.display = 'none';
+                    return;
+                }
+                const filteredFoods = Object.keys(nutritionData).filter(food => 
+                    food.toLowerCase().includes(query)
+                );
+                searchResults.innerHTML = '';
+                if (filteredFoods.length > 0) {
+                    filteredFoods.forEach(food => {
+                        const item = document.createElement('div');
+                        item.className = 'search-item';
+                        item.textContent = food;
+                        item.onclick = function() {
+                            document.getElementById('food-select').value = food;
+                            searchResults.style.display = 'none';
+                            searchInput.value = ''; 
+                        };
+                        searchResults.appendChild(item);
+                    });
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.style.display = 'none';
+                }
+            });
+            document.addEventListener('click', function(event) {
+                // searchResultsとsearchInputがDOMに存在するか確認してから処理
+                if (searchResults && searchInput && !searchResults.contains(event.target) && event.target !== searchInput) {
+                    searchResults.style.display = 'none';
+                }
+            });
+
+            // デフォルト値設定
+            document.getElementById('height').value = '167';
+            document.getElementById('weight').value = '61';
 
             // 初期userSettings設定
             userSettings = {
                 gender   : document.getElementById('gender').value,
                 ageGroup : document.getElementById('age-group').value,
                 activity : document.getElementById('activity-level').value,
-                weight   : parseFloat(document.getElementById('weight').value) || 0,
+                weight   : parseFloat(document.getElementById('weight').value) || 0, // デフォルト値があるので、|| 0 は念のため
                 menstruation : document.querySelector('input[name="menstruation"]:checked')?.value,
                 pregnancyStatus : document.getElementById('pregnancy').value
             };
 
-            // 初期表示更新
-            createNutritionChart(); 
-            if (userSettings.weight > 0) { 
-                updateTotalCalories();
-                displayStandards();
-                updateNutritionChart();
-            } else {
-                document.getElementById('calorie-percent').textContent = '(個人設定で体重を入力してください)';
-                const tbody = document.getElementById('standards-table-body');
-                if(tbody) tbody.innerHTML = '<tr><td class="nutrient-name-cell" style="grid-column: 1 / -1; text-align: center; color: #718096; padding: 1rem;">個人設定で身長・体重を入力し、「設定を保存」を押してください。</td></tr>';
-                const standardsDisplay = document.getElementById('standards-display');
-                if(standardsDisplay) standardsDisplay.classList.remove('hidden');
-                // グラフも空かメッセージ表示
-                if (nutritionChart) {
-                    nutritionChart.data.labels = [];
-                    nutritionChart.data.datasets[0].data = [];
-                    nutritionChart.options.scales.y.title.text = '摂取量'; // デフォルトのY軸ラベル
-                    nutritionChart.update();
+            // 初期表示更新 (try-catchでエラーハンドリングを強化)
+            try {
+                createNutritionChart(); 
+                if (userSettings.weight > 0) { 
+                    updateTotalCalories();
+                    displayStandards();
+                    updateNutritionChart();
+                } else {
+                    // 体重が初期状態で0またはNaNの場合のUI表示
+                    document.getElementById('calorie-percent').textContent = '(個人設定で体重を入力してください)';
+                    const tbody = document.getElementById('standards-table-body');
+                    if(tbody) tbody.innerHTML = '<tr><td class="nutrient-name-cell" style="grid-column: 1 / -1; text-align: center; color: #718096; padding: 1rem;">個人設定で身長・体重を入力し、「設定を保存」を押してください。</td></tr>';
+                    const standardsDisplay = document.getElementById('standards-display');
+                    if(standardsDisplay) standardsDisplay.classList.remove('hidden');
+                    
+                    if (nutritionChart) { // チャートが初期化されていれば空にする
+                        nutritionChart.data.labels = [];
+                        nutritionChart.data.datasets[0].data = [];
+                        nutritionChart.options.scales.y.title.text = '摂取量'; // Y軸ラベルをデフォルトに
+                        nutritionChart.update();
+                    }
                 }
+            } catch (e) {
+                console.error("Error during initial page load processing:", e);
+                // ここでユーザーにエラーを通知するUI（例: alertや特定のdivにメッセージ表示）を追加することも可能です。
+                // alert("ページの読み込み中にエラーが発生しました。一部機能が正しく動作しない可能性があります。");
             }
-
-            /* --- 追加コード (今日の摂取表示／送信) --- */
-            document.getElementById('submit-intake').addEventListener('click', () => { /* ... (変更なし) ... */ });
-            document.getElementById('today-intake-cancel').addEventListener('click', () => { /* ... (変更なし) ... */ });
         };
+
         
         // 食品を追加する関数
         function addFood(foodName) {
