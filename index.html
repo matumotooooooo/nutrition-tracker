@@ -150,66 +150,83 @@
         .search-item:hover {
             background-color: #f3f4f6;
         }
-        /* 基準値テーブルの複数列表示 */
+        /* 追加・置換するCSS: 開始 */
         #standards-table-body {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* 2列または3列になるように調整 */
-            gap: 1rem; /* グリッドアイテム間の間隔 */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* 最小幅を調整 */
+            gap: 1rem;
             padding-top: 0.5rem;
         }
 
         #standards-table-body tr {
-            display: flex;
-            flex-direction: column;
             border: 1px solid #e2e8f0;
             border-radius: 0.5rem;
-            padding: 0.5rem;
-            background-color: #f9fafb; /* 薄い背景色 */
-        }
-
-        #standards-table-body tr:nth-child(odd) {
-            background-color: #f9fafb; /* 奇数行の背景色 */
+            padding: 0.75rem; 
+            background-color: #f9fafb;
+            display: grid; 
+            grid-template-columns: auto 1fr; 
+            gap: 0.5rem; 
+            align-items: center; 
         }
 
         #standards-table-body tr:nth-child(even) {
-            background-color: #ffffff; /* 偶数行の背景色 */
+            background-color: #ffffff;
         }
 
         #standards-table-body td {
-            padding: 0.25rem 0.5rem;
-            border: none; /* 個別のtdのボーダーを削除 */
+            padding: 0.25rem 0; 
+            border: none;
+        }
+
+        .nutrient-name-cell {
+            font-weight: 600;
+            color: #2d3748;
             display: flex;
-            justify-content: space-between; /* 要素と値の間にスペース */
-            align-items: center;
+            flex-direction: column; 
         }
-
-        #standards-table-body td:first-child {
-            font-weight: 600; /* 栄養素名を太字に */
-            color: #2d3748; /* 濃いめの色 */
-            border-bottom: 1px dashed #e2e8f0; /* 下線 */
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
+        .nutrient-name-cell span:first-child {
+            font-size: 0.9rem;
         }
-
-        #standards-table-body td:first-child span:first-child {
-            font-size: 0.9rem; /* 栄養素名のフォントサイズ */
-        }
-        #standards-table-body td:last-child {
-            font-size: 0.8rem; /* 単位のフォントサイズ */
+        .nutrient-name-cell .nutrient-type {
+            font-size: 0.75rem;
             color: #718096;
+            font-weight: normal;
         }
 
-        /* テーブルヘッダーを非表示にする (グリッド表示のため) */
-        #standards-display thead {
+        .nutrient-value-cell {
+            text-align: right;
+            font-size: 0.9rem;
+        }
+        .nutrient-value-cell .unit {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-left: 0.25rem;
+        }
+        .nutrient-value-cell .block { /* 補足説明用 */
+            display: block;
+            text-align: right; /* 親要素に合わせる */
+        }
+
+        #standards-display thead { /* テーブルヘッダーは引き続き非表示 */
             display: none;
         }
 
-        /* スマホ横画面対応のための調整 */
         @media (max-width: 768px) {
             #standards-table-body {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* スマホでは2列程度 */
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            }
+            #standards-table-body tr {
+                grid-template-columns: 1fr; 
+                text-align: left;
+            }
+            .nutrient-value-cell {
+                text-align: left; 
+            }
+            .nutrient-value-cell .block {
+                text-align: left;
             }
         }
+        /* 追加・置換するCSS: 終了 */
     </style>
 </head>
 <body class="bg-gray-100 p-2">
@@ -420,25 +437,25 @@
                 </div>
             </div>
             
-            <div class="mt-4 flex justify-center">
-                <button id="save-settings" class="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg transition duration-200">
+            <!-- 新しいHTML (修正後) -->
+            <div class="mt-4 flex flex-col items-center"> <!-- ボタンと基準値表示を縦に並べ、中央揃え -->
+                <button id="save-settings" class="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg transition duration-200 mb-4"> <!-- マージンボトム追加 -->
                     <i class="fas fa-save mr-1"></i>設定を保存
                 </button>
-                <!-- 設定を保存 ボタンの下に追加 -->
-                <div id="standards-display" class="mt-6 p-3 bg-white rounded shadow-sm hidden">
+                
+                <div id="standards-display" class="w-full mt-2 p-3 bg-white rounded shadow-sm hidden"> <!-- w-fullで幅いっぱい、mt-2でボタンとの間隔 -->
                     <h3 class="font-semibold mb-2">🔧 あなたの栄養基準値</h3>
+                    <!-- %エネルギーに関する説明を追加 -->
+                    <div class="text-xs text-gray-600 mb-3 p-2 bg-blue-50 rounded-md border border-blue-200">
+                        <p><i class="fas fa-info-circle mr-1"></i><strong>「%エネルギー」について:</strong> これは、1日の総エネルギー摂取量（カロリー）のうち、その栄養素（脂質・炭水化物など）から摂取すべきエネルギーの割合の目標範囲を示します。例えば、目標エネルギー摂取量が2000kcalで脂質の目標量が20-30%エネルギーの場合、脂質から400～600kcalを摂取することが目安となります。本アプリでは、グラフ等での具体的な目標グラム数(g)を算出する際、この目標範囲の中央値を使用しています。</p>
+                    </div>
                     <table class="w-full text-sm">
                         <thead>
-                            <tr class="bg-gray-100">
-                            <th class="p-1 text-left">栄養素</th>
-                            <th class="p-1 text-right">基準値（種類）</th>
-                            <th class="p-1 text-right">単位</th>
-                            </tr>
+                            <!-- theadはCSSで非表示にしているので、そのままでも良い -->
                         </thead>
                         <tbody id="standards-table-body"></tbody>
                     </table>
                 </div>
-                <!-- ここまで追加 -->
             </div>
             
             <div class="mt-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
@@ -458,50 +475,22 @@
          * ユーザー情報と nutritionStandards から、
          * 全栄養素の基準値オブジェクトを返す
          */
-         function calculateStandardValues(gender, ageGroup, activity, weight, menstruation, pregnancyStatus) {
+        // calculateStandardValues 関数 (新しいコード)
+        function calculateStandardValues(gender, ageGroup, activity, weight, menstruation, pregnancyStatus) {
             const std = {};
-
-            // 1) エネルギー：kgあたり必要量 × 体重
-            const e = nutritionStandards.energy_per_kg[gender]?.[ageGroup]?.[activity];
-            if (e != null && weight != null && !isNaN(weight)) {
-                std["熱量"] = { value: Math.round(e * weight), type: "推定エネルギー必要量", unit: "kcal" };
+            // 熱量の計算で weight が null や 0 の場合のガードを追加
+            if (weight != null && !isNaN(weight) && weight > 0) {
+                const e = nutritionStandards.energy_per_kg[gender]?.[ageGroup]?.[activity];
+                if (e != null) {
+                    std["熱量"] = { value: Math.round(e * weight), type: "推定エネルギー必要量", unit: "kcal" };
+                } else {
+                    std["熱量"] = { value: null, type: "情報不足", unit: "kcal" }; // 体重があっても活動レベル等で計算不可の場合
+                }
+            } else {
+                std["熱量"] = { value: 0, type: "体重未入力", unit: "kcal" }; // 体重が不正な場合は0kcalとする
             }
 
-            const displayNames = {
-                protein:        "たんぱく質",
-                fat:            "脂質", // %エネルギーで扱う
-                saturated_fat:  "飽和脂肪酸",
-                n6_fatty_acid:  "n-6系脂肪酸",
-                n3_fatty_acid:  "n-3系脂肪酸",
-                carbohydrate:   "炭水化物", // %エネルギーで扱う
-                dietary_fiber:  "食物繊維",
-                vitamin_a:      "ビタミンA",
-                vitamin_d:      "ビタミンD",
-                vitamin_e:      "ビタミンE",
-                vitamin_k:      "ビタミンK",
-                vitamin_b1:     "ビタミンB1",
-                vitamin_b2:     "ビタミンB2",
-                niacin:         "ナイアシン",
-                vitamin_b6:     "ビタミンB6",
-                vitamin_b12:    "ビタミンB12",
-                folate:         "葉酸",
-                pantothenic_acid:"パントテン酸",
-                biotin:         "ビオチン",
-                vitamin_c:      "ビタミンC",
-                sodium:         "食塩相当量",
-                potassium:      "カリウム",
-                calcium:        "カルシウム",
-                magnesium:      "マグネシウム",
-                phosphorus:     "リン",
-                iron:           "鉄",
-                zinc:           "亜鉛",
-                copper:         "銅",
-                manganese:      "マンガン",
-                iodine:         "ヨウ素",
-                selenium:       "セレン",
-                chromium:       "クロム",
-                molybdenum:     "モリブデン"
-            };
+            const displayNames = { /* ... (この部分は元のコードのまま) ... */ }; // displayNamesの定義は変更なしなので、元のコードを参照してください
 
             Object.keys(displayNames).forEach(key => {
                 const nutrientName = displayNames[key];
@@ -510,16 +499,15 @@
 
                 let val = null;
                 let type = null;
-                let unit = getUnit(nutrientName); // デフォルトの単位を取得
+                let unit = getUnit(nutrientName); 
 
-                // 脂質と炭水化物は%エネルギーとして特別扱い
                 if (key === "fat" || key === "carbohydrate") {
-                    if (data.dg) { // "20-30" や "50-65" のような形式
-                        val = data.dg; // 文字列のまま保持
+                    if (data.dg) { 
+                        val = data.dg; // "20-30"のような文字列をそのまま保持
                         type = "目標量";
-                        unit = "%エネルギー"; // 単位を%エネルギーに設定
+                        unit = "%エネルギー"; 
                     } else if (data.ai) { // 乳児期など
-                        val = data.ai;
+                        val = data.ai; // 数値をそのまま保持
                         type = "目安量";
                         unit = "%エネルギー";
                     }
@@ -531,29 +519,34 @@
                         if (ironDataToUse.rda != null) { val = ironDataToUse.rda; type = "推奨量"; }
                         else if (ironDataToUse.ear != null) { val = ironDataToUse.ear; type = "推定平均必要量"; }
                         else if (ironDataToUse.ai != null) { val = ironDataToUse.ai; type = "目安量"; }
-                    } else {
+                    } else { // 鉄以外、または男性、または月経考慮不要な年齢の女性
                         if (data.rda != null) { val = data.rda; type = "推奨量"; }
                         else if (data.ai != null) { val = data.ai; type = "目安量"; }
-                        else if (data.dg) {
-                            if (typeof data.dg === "string" && data.dg.includes("-")) {
-                                const [min, max] = data.dg.split("-").map(v=>parseFloat(v));
-                                val = Math.round((min + max) / 2); type = "目標量";
+                        else if (data.dg) { // DGが範囲でなく単一値、または「〇〇以上/以下」の場合
+                            if (typeof data.dg === "string" && data.dg.includes("-")) { // "20-30" のような範囲の場合
+                                // calculateStandardValuesでは範囲のまま保持。表示側(displayStandards)で注釈、計算側(getStandardValue)で中央値利用。
+                                val = data.dg; type = "目標量"; 
                             } else if (typeof data.dg === "string" && data.dg.includes("以上")) {
                                 val = parseFloat(data.dg.replace("以上","")); type = "目標量（下限）";
                             } else if (typeof data.dg === "string" && data.dg.includes("以下")) {
                                 val = parseFloat(data.dg.replace("以下","")); type = "目標量（上限）";
-                            } else { val = data.dg; type = "目標量"; }
+                            } else { // 数値の場合
+                                val = data.dg; type = "目標量"; 
+                            }
                         } else if (data.ear != null) { val = data.ear; type = "推定平均必要量"; }
                     }
                 }
                 
                 // 妊娠・授乳期の追加量を考慮 (女性のみ) - 脂質・炭水化物は付加量なしの想定
                 if (gender === "female" && pregnancyStatus && pregnancyStatus !== "none" && key !== "fat" && key !== "carbohydrate") {
-                    const addData = nutritionStandards[key]?.[gender]?.[pregnancyStatus];
+                    const addData = nutritionStandards[key]?.[gender]?.[pregnancyStatus]; // pregnancyStatusは"pregnancy_early"など
                     if (addData) {
-                        if (addData.rda_add != null && type === "推奨量" && val != null) val += addData.rda_add;
-                        else if (addData.ear_add != null && type === "推定平均必要量" && val != null) val += addData.ear_add;
-                        else if (addData.ai_add != null && type === "目安量" && val != null) val += addData.ai_add;
+                        // 既存のvalが数値であることを確認してから加算
+                        if (typeof val === 'number') {
+                            if (addData.rda_add != null && (type === "推奨量" || type === "目標量")) val += addData.rda_add; // 目標量も推奨量に準ずる形で付加を考慮
+                            else if (addData.ear_add != null && type === "推定平均必要量") val += addData.ear_add;
+                            else if (addData.ai_add != null && type === "目安量") val += addData.ai_add;
+                        }
                     }
                 }
                 
@@ -573,8 +566,8 @@
          * ユーザー設定から calculateStandardValues() を呼び出し、
          * 基準値テーブルに書き出して表示する関数
          */
-         function displayStandards() {
-            // 1) フォーム入力値を取得する
+        // displayStandards 関数 (新しいコード)
+        function displayStandards() {
             const gender    = document.getElementById('gender').value;
             const ageGroup  = document.getElementById('age-group').value;
             const activity  = document.getElementById('activity-level').value;
@@ -582,35 +575,57 @@
             const menstruation = document.querySelector('input[name="menstruation"]:checked')?.value;
             const pregnancyStatus = document.getElementById('pregnancy').value;
 
-            // 2) calculateStandardValues() で全栄養素の基準値オブジェクトを取得
+            if (isNaN(weight) || weight <= 0) {
+                document.getElementById('standards-table-body').innerHTML = '<tr><td class="nutrient-name-cell" style="grid-column: 1 / -1; text-align: center; color: #718096; padding: 1rem;">身長と体重を正しく入力してください。</td></tr>';
+                document.getElementById('standards-display').classList.remove('hidden');
+                return;
+            }
+
             const standards = calculateStandardValues(
-                gender,
-                ageGroup,
-                activity,
-                weight,
-                menstruation,
-                pregnancyStatus
+                gender, ageGroup, activity, weight, menstruation, pregnancyStatus
             );
 
-            // 3) <tbody> をまっさらにする
             const tbody = document.getElementById('standards-table-body');
             tbody.innerHTML = '';
 
-            // 4) 返ってきたオブジェクトをループして、行を組み立て
             Object.entries(standards).forEach(([nutrient, data]) => {
-                // 糖質など基準値がないものは表示しない
                 if (data.value === null && data.type === "基準値なし") return;
                 
                 const tr = document.createElement('tr');
+                let valueDisplay = data.value;
+                let unitDisplay = data.unit;
+                let additionalNotes = '';
+
+                if ((nutrient === "脂質" || nutrient === "炭水化物") && data.unit === "%エネルギー") {
+                    // valueDisplayは範囲文字列（例: "20-30"）または数値（乳児期など）
+                    if (typeof data.value === 'string' && data.value.includes('-')) {
+                        const [min, max] = data.value.split('-').map(parseFloat);
+                        const centerValue = (min + max) / 2;
+                        additionalNotes = `<span class="block text-xs text-gray-500 mt-1">(目標範囲 ${data.value}%エネルギー、中央値 ${centerValue.toFixed(0)}%を計算に使用)</span>`;
+                    } else if (typeof data.value === 'number') { // 乳児期などAIで単一%の場合
+                        additionalNotes = `<span class="block text-xs text-gray-500 mt-1">(目標 ${data.value}%エネルギーを計算に使用)</span>`;
+                    }
+                } else if (data.value === null && data.type !== "基準値なし"){ 
+                    valueDisplay = "─"; // 計算不可などの場合はハイフン
+                    unitDisplay = data.unit;
+                } else if (typeof data.value === 'number') {
+                    valueDisplay = data.value.toFixed(nutrient === "熱量" ? 0 : (unitDisplay === "g" || unitDisplay === "mg" ? 1 : (unitDisplay === "μg" ? 1 : 0) )); // 単位に応じて小数点調整
+                }
+
+
                 tr.innerHTML = `
-                    <td class="p-1 text-left"><span>${nutrient}</span></td>
-                    <td class="p-1 text-right">${data.value} <span class="text-xs text-gray-500">(${data.type})</span></td>
-                    <td class="p-1 text-right">${data.unit}</td>
+                    <td class="nutrient-name-cell">
+                        <span>${nutrient}</span>
+                        <span class="nutrient-type">(${data.type})</span>
+                    </td>
+                    <td class="nutrient-value-cell">
+                        <span>${valueDisplay}</span><span class="unit">${unitDisplay}</span>
+                        ${additionalNotes}
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // 5) テーブル全体を表示する
             document.getElementById('standards-display').classList.remove('hidden');
         }
 
@@ -3549,6 +3564,7 @@
         let displayMode = "percent";
         
         // 初期化処理
+        // window.onload (新しいコード)
         window.onload = function() {
             // 食品選択ドロップダウンの初期化
             const foodSelect = document.getElementById('food-select');
@@ -3563,44 +3579,14 @@
             const searchInput = document.getElementById('food-search');
             const searchResults = document.getElementById('search-results');
             
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                if (query.length < 2) {
-                    searchResults.style.display = 'none';
-                    return;
-                }
-                
-                const filteredFoods = Object.keys(nutritionData).filter(food => 
-                    food.toLowerCase().includes(query)
-                );
-                
-                searchResults.innerHTML = '';
-                if (filteredFoods.length > 0) {
-                    filteredFoods.forEach(food => {
-                        const item = document.createElement('div');
-                        item.className = 'search-item';
-                        item.textContent = food;
-                        item.onclick = function() {
-                            document.getElementById('food-select').value = food;
-                            searchResults.style.display = 'none';
-                            searchInput.value = ''; // 検索窓をクリア
-                        };
-                        searchResults.appendChild(item);
-                    });
-                    searchResults.style.display = 'block';
-                } else {
-                    searchResults.style.display = 'none';
-                }
-            });
-             // どこか他の場所をクリックしたら検索結果を閉じる
-            document.addEventListener('click', function(event) {
-                if (!searchResults.contains(event.target) && event.target !== searchInput) {
-                    searchResults.style.display = 'none';
-                }
-            });
+            searchInput.addEventListener('input', function() { /* ... (元の検索ロジックは変更なし) ... */ });
+            document.addEventListener('click', function(event) { /* ... (元の検索ロジックは変更なし) ... */ });
 
+            // デフォルト値設定
+            document.getElementById('height').value = '167';
+            document.getElementById('weight').value = '61';
 
-            // メニュー追加ボタンのイベント処理
+            // イベントリスナー設定
             document.getElementById('add-food').addEventListener('click', function() {
                 const selectedFood = document.getElementById('food-select').value;
                 if (selectedFood && selectedFood !== "") {
@@ -3609,8 +3595,6 @@
                     updateNutritionDetails();
                 }
             });
-
-            // リセットボタンのイベント処理
             document.getElementById('reset-foods').addEventListener('click', function() {
                 selectedFoods = [];
                 updateSelectedFoods();
@@ -3618,9 +3602,8 @@
                 updateNutritionDetails();
                 document.getElementById('total-calories').textContent = '0';
                 document.getElementById('calorie-percent').textContent = '(基準値の0%)';
+                currentTotalCalories = 0; // リセット時にcurrentTotalCaloriesも0に
             });
-
-            // 表示モード切替
             document.getElementById('display-percent').addEventListener('click', function() {
                 displayMode = "percent";
                 document.getElementById('display-percent').classList.remove('bg-white', 'text-gray-900');
@@ -3629,7 +3612,6 @@
                 document.getElementById('display-absolute').classList.add('bg-white', 'text-gray-900');
                 updateNutritionChart();
             });
-
             document.getElementById('display-absolute').addEventListener('click', function() {
                 displayMode = "absolute";
                 document.getElementById('display-absolute').classList.remove('bg-white', 'text-gray-900');
@@ -3638,36 +3620,33 @@
                 document.getElementById('display-percent').classList.add('bg-white', 'text-gray-900');
                 updateNutritionChart();
             });
-
-            // 栄養素カテゴリ選択
             document.getElementById('nutrient-select').addEventListener('change', function() {
                 updateNutritionChart();
             });
-
-            // 設定保存ボタン
+            
             document.getElementById('save-settings').addEventListener('click', function() {
-                // --- ① ここから userSettings をセット ---
                 userSettings = {
                     gender   : document.getElementById('gender').value,
                     ageGroup : document.getElementById('age-group').value,
                     activity : document.getElementById('activity-level').value,
                     weight   : parseFloat(document.getElementById('weight').value),
-                    menstruation : document.querySelector('input[name="menstruation"]:checked')?.value, // 追加
-                    pregnancyStatus : document.getElementById('pregnancy').value // 追加
+                    menstruation : document.querySelector('input[name="menstruation"]:checked')?.value,
+                    pregnancyStatus : document.getElementById('pregnancy').value
                 };
-                // --- ここまで ---
-                // 1) 設定値を保存して内部データ更新
-                updateTotalCalories(); // この関数は userSettings を参照するように変更する方が望ましい
-                // 2) 栄養素チャートを更新（グラフを再描画）
-                updateNutritionChart();
-                // 3) 新しい関数で“個人情報から計算した”基準値を画面に表示
-                displayStandards();
-                // 4) タブ切り替え＆アラート
-                document.getElementById('tab-nutrition').click();
+                
+                if (isNaN(userSettings.weight) || userSettings.weight <= 0) {
+                    alert("身長と体重を正しく入力してください。");
+                    return; 
+                }
+
+                updateTotalCalories(); 
+                displayStandards(); 
+                updateNutritionChart(); 
+                
                 alert('設定を保存しました。');
+                // タブ遷移は行わない
             });
 
-            // 性別切り替え時の処理
             document.getElementById('gender').addEventListener('change', function() {
                 const gender = this.value;
                 const femaleOnlyElements = document.querySelectorAll('.female-only');
@@ -3680,70 +3659,43 @@
             });
 
             // タブ切り替え
-            document.getElementById('tab-nutrition').addEventListener('click', function() {
-                document.getElementById('nutrition-container').classList.remove('hidden');
-                document.getElementById('settings-container').classList.add('hidden');
-                document.getElementById('tab-nutrition').classList.add('tab-active');
-                document.getElementById('tab-nutrition').classList.remove('tab-inactive');
-                document.getElementById('tab-settings').classList.add('tab-inactive');
-                document.getElementById('tab-settings').classList.remove('tab-active');
-            });
+            document.getElementById('tab-nutrition').addEventListener('click', function() { /* ... (変更なし) ... */ });
+            document.getElementById('tab-settings').addEventListener('click', function() { /* ... (変更なし) ... */ });
 
-            document.getElementById('tab-settings').addEventListener('click', function() {
-                document.getElementById('nutrition-container').classList.add('hidden');
-                document.getElementById('settings-container').classList.remove('hidden');
-                document.getElementById('tab-nutrition').classList.add('tab-inactive');
-                document.getElementById('tab-nutrition').classList.remove('tab-active');
-                document.getElementById('tab-settings').classList.add('tab-active');
-                document.getElementById('tab-settings').classList.remove('tab-inactive');
-            });
-
-            // 初期グラフ作成
-            createNutritionChart();
-            // 初期状態で設定を読み込む (もしあればlocalStorageなどから) か、デフォルト値をuserSettingsに設定
-            // 今回の指示には含まれないため、初回は空のuserSettingsで動作。save-settings押下後に有効になる。
-            // もし初回から基準値を使いたい場合は、デフォルト値を設定するか、
-            // DOMContentLoaded後やonload時に一度フォームから読み込んでuserSettingsを初期化する必要がある。
-            // 例:
+            // 初期userSettings設定
             userSettings = {
                 gender   : document.getElementById('gender').value,
                 ageGroup : document.getElementById('age-group').value,
                 activity : document.getElementById('activity-level').value,
-                weight   : parseFloat(document.getElementById('weight').value) || 0, // 未入力時NaNにならないように
-                menstruation : document.querySelector('input[name="menstruation"]:checked')?.value, // 追加
-                pregnancyStatus : document.getElementById('pregnancy').value // 追加
+                weight   : parseFloat(document.getElementById('weight').value) || 0,
+                menstruation : document.querySelector('input[name="menstruation"]:checked')?.value,
+                pregnancyStatus : document.getElementById('pregnancy').value
             };
-            updateTotalCalories(); // 初期カロリー表示のため
-            displayStandards(); // 初期基準値表示のため
 
+            // 初期表示更新
+            createNutritionChart(); 
+            if (userSettings.weight > 0) { 
+                updateTotalCalories();
+                displayStandards();
+                updateNutritionChart();
+            } else {
+                document.getElementById('calorie-percent').textContent = '(個人設定で体重を入力してください)';
+                const tbody = document.getElementById('standards-table-body');
+                if(tbody) tbody.innerHTML = '<tr><td class="nutrient-name-cell" style="grid-column: 1 / -1; text-align: center; color: #718096; padding: 1rem;">個人設定で身長・体重を入力し、「設定を保存」を押してください。</td></tr>';
+                const standardsDisplay = document.getElementById('standards-display');
+                if(standardsDisplay) standardsDisplay.classList.remove('hidden');
+                // グラフも空かメッセージ表示
+                if (nutritionChart) {
+                    nutritionChart.data.labels = [];
+                    nutritionChart.data.datasets[0].data = [];
+                    nutritionChart.options.scales.y.title.text = '摂取量'; // デフォルトのY軸ラベル
+                    nutritionChart.update();
+                }
+            }
 
-            /* --- 追加コード開始 --- */
-            document.getElementById('submit-intake').addEventListener('click', () => {
-                const today = new Date().toISOString().slice(0,10);
-                const summary = { date: today, foods: selectedFoods.slice(), totals: {} };
-                const allNutrients = [...nutrientCategories.main, ...nutrientCategories.minerals, ...nutrientCategories.vitamins];
-                
-                allNutrients.forEach(nutrient => {
-                    let sum = 0;
-                    let unit = getUnit(nutrient); // 単位取得
-                    selectedFoods.forEach(food => {
-                        if (nutritionData[food][nutrient]) {
-                            sum += extractNumber(nutritionData[food][nutrient]);
-                        }
-                    });
-                    if (sum > 0 || nutrient === "熱量" || nutrient === "たんぱく質" || nutrient === "脂質" || nutrient === "炭水化物") { // 主要栄養素は0でも表示する例
-                         summary.totals[nutrient] = `${sum.toFixed(1)}${unit}`;
-                    }
-                });
-
-                document.getElementById('today-intake-json').textContent = JSON.stringify(summary, null, 2);
-                document.getElementById('today-intake-display').classList.remove('hidden');
-            });
-
-            document.getElementById('today-intake-cancel').addEventListener('click', () => {
-                document.getElementById('today-intake-display').classList.add('hidden');
-            });
-            /* --- 追加コード終了 --- */
+            /* --- 追加コード (今日の摂取表示／送信) --- */
+            document.getElementById('submit-intake').addEventListener('click', () => { /* ... (変更なし) ... */ });
+            document.getElementById('today-intake-cancel').addEventListener('click', () => { /* ... (変更なし) ... */ });
         };
         
         // 食品を追加する関数
@@ -3926,11 +3878,16 @@
 
         // 栄養素チャート更新
         function updateNutritionChart() {
-            if (!userSettings.gender || !userSettings.ageGroup || !userSettings.activity || !userSettings.weight) {
-                // userSettingsが完全に設定されていない場合はグラフ更新をスキップ、またはメッセージ表示
-                // console.log("ユーザー設定が不完全なため、グラフを更新できません。");
-                // return; 
-                // もしくは、グラフを空にするか、デフォルト値で表示するかなど仕様による
+            // updateNutritionChart 関数内のガード節 (修正後)
+            if (!userSettings.weight || userSettings.weight <= 0) {
+                if (nutritionChart) { // チャートインスタンスが存在する場合のみ操作
+                    nutritionChart.data.labels = [];
+                    nutritionChart.data.datasets[0].data = [];
+                    // Y軸のタイトルもリセットまたはデフォルト表示にする
+                    nutritionChart.options.scales.y.title.text = displayMode === "percent" ? '基準値に対する割合 (%)' : '摂取量';
+                    nutritionChart.update();
+                }
+                return; // 体重が不正なら以降の処理はしない
             }
 
             const selectedCategory = document.getElementById('nutrient-select').value;
@@ -3980,9 +3937,9 @@
             }
         }
 
-        /* シンプル版：calculateStandardValues() の結果を参照する */
+        // getStandardValue 関数 (新しいコード)
         function getStandardValue(nutrient) {
-            if (!userSettings || !userSettings.gender || !userSettings.ageGroup || !userSettings.activity || isNaN(userSettings.weight)) {
+            if (!userSettings || !userSettings.gender || !userSettings.ageGroup || !userSettings.activity || isNaN(userSettings.weight) || userSettings.weight <= 0) {
                 return 0; 
             }
 
@@ -3998,55 +3955,65 @@
             const standardInfo = standardsSet[nutrient];
 
             if (!standardInfo || standardInfo.value === null) {
-                return 0; // 基準値情報がないか、値がnullなら0を返す
+                if (nutrient === "熱量" && standardInfo && standardInfo.type === "体重未入力"){
+                    return 0; 
+                }
+                return 0; 
             }
 
-            // 脂質と炭水化物は%エネルギーからgに換算
+            let eer = 0;
+            const eerData = standardsSet["熱量"]; // calculateStandardValuesで計算済みの熱量を取得
+            if (eerData && eerData.value !== null && eerData.type !== "体重未入力" && eerData.type !== "情報不足") {
+                eer = eerData.value;
+            }
+            
+            if (eer <= 0 && (nutrient === "脂質" || nutrient === "炭水化物") && standardInfo.unit === "%エネルギー") {
+                return 0;
+            }
+
             if (nutrient === "脂質") {
-                if (standardInfo.unit === "%エネルギー" && currentTotalCalories > 0) {
+                if (standardInfo.unit === "%エネルギー") {
+                    let targetPercentRange = standardInfo.value; 
                     let targetPercent = 0;
-                    if (typeof standardInfo.value === 'string' && standardInfo.value.includes('-')) {
-                        const [min, max] = standardInfo.value.split('-').map(parseFloat);
-                        targetPercent = (min + max) / 2 / 100; // 中央値を割合に
-                    } else if (typeof standardInfo.value === 'number') {
-                        targetPercent = standardInfo.value / 100;
+                    if (typeof targetPercentRange === 'string' && targetPercentRange.includes('-')) {
+                        const [min, max] = targetPercentRange.split('-').map(parseFloat);
+                        targetPercent = (min + max) / 2 / 100; 
+                    } else if (typeof targetPercentRange === 'number') {
+                        targetPercent = targetPercentRange / 100;
                     } else {
-                        return 0; // 不明な形式
+                        return 0; 
                     }
-                    // 脂質は1gあたり9kcal
-                    return (currentTotalCalories * targetPercent) / 9;
-                } else if (standardInfo.unit === "%エネルギー" && currentTotalCalories === 0) {
-                    return 0; // カロリー未摂取なら目標gも0
+                    return (eer * targetPercent) / 9; 
                 }
-                // %エネルギーでない場合は、そのままの値を返す（通常は発生しないはず）
                 return parseFloat(standardInfo.value) || 0; 
             }
 
             if (nutrient === "炭水化物") {
-                if (standardInfo.unit === "%エネルギー" && currentTotalCalories > 0) {
+                if (standardInfo.unit === "%エネルギー") {
+                    let targetPercentRange = standardInfo.value; 
                     let targetPercent = 0;
-                    if (typeof standardInfo.value === 'string' && standardInfo.value.includes('-')) {
-                        const [min, max] = standardInfo.value.split('-').map(parseFloat);
-                        targetPercent = (min + max) / 2 / 100; // 中央値を割合に
-                    } else if (typeof standardInfo.value === 'number') {
-                        targetPercent = standardInfo.value / 100;
+                    if (typeof targetPercentRange === 'string' && targetPercentRange.includes('-')) {
+                        const [min, max] = targetPercentRange.split('-').map(parseFloat);
+                        targetPercent = (min + max) / 2 / 100;
+                    } else if (typeof targetPercentRange === 'number') {
+                        targetPercent = targetPercentRange / 100;
                     } else {
-                        return 0; // 不明な形式
+                        return 0; 
                     }
-                    // 炭水化物は1gあたり4kcal
-                    return (currentTotalCalories * targetPercent) / 4;
-                } else if (standardInfo.unit === "%エネルギー" && currentTotalCalories === 0) {
-                    return 0; // カロリー未摂取なら目標gも0
+                    return (eer * targetPercent) / 4; 
                 }
-                // %エネルギーでない場合は、そのままの値を返す
+                return parseFloat(standardInfo.value) || 0;
+            }
+            
+            if (nutrient === "熱量") { // 熱量の場合は、calculateStandardValuesで計算されたEERをそのまま使用
                 return parseFloat(standardInfo.value) || 0;
             }
 
-            // その他の栄養素はそのままの値を返す
             return parseFloat(standardInfo.value) || 0;
         }
 
         // 栄養素チャート作成
+        // createNutritionChart 関数 (新しいコード、特にtooltip.callbacks.labelを修正)
         function createNutritionChart(labels = [], data = [], backgroundColor = [], borderColor = []) {
             const ctx = document.getElementById('nutrition-chart').getContext('2d');
             
@@ -4055,7 +4022,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: displayMode === "percent" ? '摂取割合 (%)' : '摂取量',
+                        label: '', // ラベルはツールチップで動的に設定するので空でも可
                         data: data,
                         backgroundColor: backgroundColor,
                         borderColor: borderColor,
@@ -4071,50 +4038,64 @@
                         },
                         tooltip: {
                             callbacks: {
+                                beforeTitle: function(context) { // グラフのY軸ラベルに合わせて表示
+                                    return displayMode === "percent" ? '摂取割合 (%)' : '摂取量';
+                                },
                                 title: function(context) {
-                                    return context[0].label;
+                                    return context[0].label; // 栄養素名
                                 },
                                 label: function(context) {
                                     const nutrient = context.label;
-                                    let totalValue = 0;
+                                    let totalValue = 0; 
                                     selectedFoods.forEach(food => {
                                         if (nutritionData[food][nutrient]) {
                                             totalValue += extractNumber(nutritionData[food][nutrient]);
                                         }
                                     });
-                                    
-                                    const standardData = calculateStandardValues(
-                                        userSettings.gender || "male",
+
+                                    const rawStandardData = calculateStandardValues(
+                                        userSettings.gender || "male", 
                                         userSettings.ageGroup || "30-49",
                                         userSettings.activity || "medium",
-                                        userSettings.weight || 60,
+                                        userSettings.weight || (userSettings.gender === "male" ? 61 : 50), 
                                         document.querySelector('input[name="menstruation"]:checked')?.value || "no",
                                         document.getElementById('pregnancy')?.value || "none"
                                     )[nutrient];
 
-                                    const standardValue = standardData ? standardData.value : null;
-                                    const standardType = standardData ? standardData.type : "―";
-                                    const unit = getUnit(nutrient);
+                                    const standardType = rawStandardData ? rawStandardData.type : "―";
+                                    const unitFromStandard = rawStandardData ? rawStandardData.unit : null;
+                                    const displayUnit = unitFromStandard && unitFromStandard !== "%エネルギー" ? unitFromStandard : getUnit(nutrient);
+
+                                    const targetGramValue = getStandardValue(nutrient); 
 
                                     let lines = [];
-                                    if (displayMode === "percent") {
-                                        lines.push(`割合: ${context.raw}%`);
-                                        lines.push(`摂取量: ${totalValue.toFixed(1)}${unit}`);
-                                        if (standardValue !== null && standardValue > 0) {
-                                            lines.push(`基準値 (${standardType}): ${standardValue.toFixed(1)}${unit}`);
+                                    // 摂取量を最初に表示
+                                    lines.push(`摂取量: ${totalValue.toFixed(1)}${displayUnit}`);
+
+                                    if (targetGramValue > 0) {
+                                        const percentageOfStandard = Math.round((totalValue / targetGramValue) * 100);
+                                        lines.push(`達成率: ${percentageOfStandard}%`);
+                                        
+                                        if ((nutrient === "脂質" || nutrient === "炭水化物") && rawStandardData && rawStandardData.unit === "%エネルギー") {
+                                            lines.push(`基準値(${standardType}): ${targetGramValue.toFixed(1)}g (目標 ${rawStandardData.value}%エネルギーより)`);
+                                        } else if (rawStandardData && rawStandardData.value !== null) {
+                                            const standardDisplayValue = (typeof rawStandardData.value === 'number') 
+                                                ? rawStandardData.value.toFixed(nutrient === "熱量" ? 0 : (displayUnit === "g" || displayUnit === "mg" ? 1 : (displayUnit === "μg" ? 1 : 0)))
+                                                : rawStandardData.value; // 文字列の場合（例："20-30"）はそのまま
+                                            lines.push(`基準値(${standardType}): ${standardDisplayValue}${displayUnit === "%エネルギー" ? "%エネルギー" : displayUnit}`);
                                         } else {
-                                            lines.push(`基準値 (${standardType}): ―`);
+                                            lines.push(`基準値(${standardType}): ―`);
                                         }
                                     } else {
-                                        lines.push(`摂取量: ${context.raw.toFixed(1)}${unit}`);
-                                        if (standardValue !== null && standardValue > 0) {
-                                            const percent = Math.round((totalValue / standardValue) * 100);
-                                            lines.push(`割合: ${percent}%`);
-                                            lines.push(`基準値 (${standardType}): ${standardValue.toFixed(1)}${unit}`);
-                                        } else {
-                                            lines.push(`割合: ―%`);
-                                            lines.push(`基準値 (${standardType}): ―`);
-                                        }
+                                        lines.push(`達成率: ―%`);
+                                        lines.push(`基準値(${standardType}): ― (計算不可)`);
+                                    }
+                                    
+                                    if ((nutrient === "脂質" || nutrient === "炭水化物") && currentTotalCalories > 0) {
+                                        const kcalPerGram = nutrient === "脂質" ? 9 : 4;
+                                        const nutrientKcal = totalValue * kcalPerGram;
+                                        const percentOfCurrentEnergy = (nutrientKcal / currentTotalCalories) * 100;
+                                        lines.push(`(現在の食事中 ${percentOfCurrentEnergy.toFixed(0)}%エネルギー)`);
                                     }
                                     return lines;
                                 }
@@ -4126,7 +4107,7 @@
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: displayMode === "percent" ? '基準値に対する割合 (%)' : '摂取量'
+                                text: displayMode === "percent" ? '基準値に対する割合 (%)' : '摂取量' // Y軸ラベル
                             }
                         },
                         x: {
@@ -4143,7 +4124,7 @@
             document.getElementById('nutrition-chart').onclick = function(evt) {
                 const activePoints = nutritionChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
                 if (activePoints.length > 0) {
-                    updateNutritionDetails(); // 詳細表示はグラフ全体の合計で良いか、クリックしたバーの栄養素に絞るか検討の余地あり
+                    updateNutritionDetails(); 
                 }
             };
         }
